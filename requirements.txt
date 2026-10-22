@@ -1,0 +1,38 @@
+# Deep Learning Framework for Environmental Sound Recognition Using PyTorch
+# Stage 2 starter requirements — UrbanSound8K + official AudioSet-pretrained PANNs CNN14
+# Target machine: Windows, Python 3.13.x, existing PyTorch 2.7.0+cu128.
+#
+# This is a COMPATIBILITY-RANGE file for initial setup, not a claim that all
+# version ranges have been tested on the user's Windows PC. After installing,
+# run check_dependencies.py and finalize_requirements.py to capture the exact
+# installed versions in requirements.lock.txt for reproducibility.
+#
+# Keep the CUDA-enabled PyTorch build. The additional PyTorch wheel index is
+# required if pip must download this exact CUDA 12.8 build.
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.7.0+cu128
+
+# Official PANNs CNN14's waveform -> log-Mel frontend
+torchlibrosa==0.1.0
+
+# Audio loading, resampling, and numerical/data operations
+numpy>=2.1,<3
+scipy>=1.15,<2
+librosa>=0.11.0,<0.12
+soundfile>=0.13,<0.14
+pandas>=2.2,<3
+
+# CO3 / CO4 / CO5 metrics, results, and plots
+scikit-learn>=1.6,<2
+matplotlib>=3.9,<4
+seaborn>=0.13,<0.14
+tqdm>=4.66,<5
+
+# Kernel for local Jupyter notebooks or VS Code .ipynb files
+ipykernel>=6.29,<8
+
+# No tensorflow, torchvision, torchaudio, or torchmetrics are required by the
+# planned initial pipeline. Add them only if actual implementation imports them.
+# The PANNs source repository itself is NOT a pip package; use the official
+# code from https://github.com/qiuqiangkong/audioset_tagging_cnn and document
+# its exact commit for reproducibility.
