@@ -1,0 +1,47 @@
+{
+  "dataset_name": "UrbanSound8K",
+  "expected_metadata_rows": 8732,
+  "metadata_rows": 8732,
+  "total_classes": 10,
+  "official_fold_count": 10,
+  "audio_files_requested_for_decoding": 8732,
+  "audio_files_successfully_decoded": 8732,
+  "invalid_or_undecodable_audio_files": 0,
+  "full_audio_audit": true,
+  "sample_rate_counts_in_scanned_audio": {
+    "8000": 12,
+    "11024": 7,
+    "11025": 39,
+    "16000": 45,
+    "22050": 44,
+    "24000": 82,
+    "32000": 4,
+    "44100": 5370,
+    "48000": 2502,
+    "96000": 610,
+    "192000": 17
+  },
+  "mono_stereo_channel_counts_in_scanned_audio": {
+    "2": 7993,
+    "1": 739
+  },
+  "duration_s_in_scanned_audio": {
+    "min": 0.05,
+    "median": 4.0,
+    "mean": 3.6075218292463376,
+    "max": 4.036647314949202
+  },
+  "clips_above_4_seconds_in_scanned_audio": 8,
+  "preprocessing": {
+    "input": "raw waveform, not precomputed log-Mel",
+    "mono": "mean of channels",
+    "sample_rate_hz": 32000,
+    "clip_samples": 128000,
+    "short_clips": "zero-pad on right",
+    "long_clips": "center crop, deterministic",
+    "resampling": "librosa soxr_hq, only when original sample rate differs",
+    "amplitude_normalization": "none",
+    "augmentation": "none"
+  },
+  "source_id_fold_isolation": "WARNING: 5 cross-fold fsIDs detected in Stage 2; no folds changed"
+}

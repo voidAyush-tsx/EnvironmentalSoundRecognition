@@ -1,0 +1,79 @@
+{
+  "run_id": "20261023_010942_996904",
+  "project_root": "D:\\EnvironmentalSoundRecognition",
+  "python_executable": "C:\\Program Files\\Python313\\python.exe",
+  "python_version": "3.13.15",
+  "mode": "quick_pilot_only",
+  "steps": [
+    {
+      "name": "Original checkpoint MD5",
+      "status": "PASS"
+    },
+    {
+      "name": "Verify installed package requirements",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Verify imports and CUDA computation",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Verify 8,732 dataset metadata paths",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Record official PANNs Git commit",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Strict CNN14 loading and CUDA inference",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Strict CNN14 loading and CPU inference",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Validate all 10 official train/validation/test splits",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Run Stage 3 waveform-processing unit tests",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Pilot audio decode audit (50 files)",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Validate real audio DataLoaders",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Run real UrbanSound8K audio through CNN14",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Refresh locally observed dependency lock",
+      "exit_code": 0,
+      "status": "PASS"
+    }
+  ],
+  "source_isolation_warning": "5 source fsIDs cross official folds (reported in Stage 2); NOT resolved",
+  "no_training_performed_by_this_runner": true,
+  "original_checkpoint_md5": "595633ac2d1cac7ef04ebf70e2fee4e4",
+  "checkpoint_md5_match": true,
+  "status": "PASS_WITH_KNOWN_SOURCE_ISOLATION_WARNING",
+  "full_audio_audit_was_requested": false
+}

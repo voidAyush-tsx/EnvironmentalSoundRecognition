@@ -1,0 +1,607 @@
+Original checkpoint MD5 595633ac2d1cac7ef04ebf70e2fee4e4: PASS
+
+=== Verify installed package requirements ===
+$ "C:\Program Files\Python313\python.exe" -m pip check
+No broken requirements found.
+EXIT CODE: 0
+
+=== Verify imports and CUDA computation ===
+$ "C:\Program Files\Python313\python.exe" check_dependencies.py
+=== PYTHON ENVIRONMENT ===
+Executable: C:\Program Files\Python313\python.exe
+Version: 3.13.15
+Platform: Windows-11-10.0.26300-SP0
+
+=== PACKAGE IMPORT TEST ===
+PASS  torch            2.7.0+cu128
+PASS  torchlibrosa     0.1.0
+PASS  numpy            2.4.2
+PASS  scipy            1.15.3
+PASS  librosa          0.11.0
+PASS  soundfile        0.13.1
+PASS  pandas           2.3.3
+PASS  scikit-learn     1.7.2
+PASS  matplotlib       3.11.2
+PASS  seaborn          0.13.2
+PASS  tqdm             4.67.1
+PASS  ipykernel        7.2.0
+
+=== PYTORCH / CUDA ===
+PyTorch: 2.7.0+cu128
+CUDA build: 12.8
+CUDA available: True
+GPU: NVIDIA GeForce RTX 3050 Laptop GPU
+GPU VRAM: 4.00 GiB
+GPU tensor computation: PASS
+
+=== FINAL STATUS ===
+PASS: all imports and CUDA test succeeded
+EXIT CODE: 0
+
+=== Verify 8,732 dataset metadata paths ===
+$ "C:\Program Files\Python313\python.exe" check_urbansound8k.py
+Dataset directory exists: True
+Metadata file exists: True
+Audio directory exists: True
+
+Metadata rows: 8732
+CSV columns: ['slice_file_name', 'fsID', 'start', 'end', 'salience', 'fold', 'classID', 'class']
+
+WAV files per fold:
+fold1: 873
+fold2: 888
+fold3: 925
+fold4: 990
+fold5: 936
+fold6: 823
+fold7: 838
+fold8: 806
+fold9: 816
+fold10: 837
+
+Total WAV files found: 8732
+
+Unique classes: 10
+Unique fold IDs: ['1', '10', '2', '3', '4', '5', '6', '7', '8', '9']
+Missing referenced files: 0
+Invalid fold records: 0
+Invalid class records: 0
+
+DATASET AUDIT: PASS
+Dataset directory exists: True
+Metadata file exists: True
+Audio directory exists: True
+
+Metadata rows: 8732
+CSV columns: ['slice_file_name', 'fsID', 'start', 'end', 'salience', 'fold', 'classID', 'class']
+
+WAV files per fold:
+fold1: 873
+fold2: 888
+fold3: 925
+fold4: 990
+fold5: 936
+fold6: 823
+fold7: 838
+fold8: 806
+fold9: 816
+fold10: 837
+
+Total WAV files found: 8732
+
+Unique classes: 10
+Unique fold IDs: ['1', '10', '2', '3', '4', '5', '6', '7', '8', '9']
+Missing referenced files: 0
+Invalid fold records: 0
+Invalid class records: 0
+
+DATASET AUDIT: PASS
+EXIT CODE: 0
+
+=== Record official PANNs Git commit ===
+$ git -C D:\EnvironmentalSoundRecognition\external\audioset_tagging_cnn rev-parse HEAD
+d2f4b8c18eab44737fcc0de1248ae21eb43f6aa4
+EXIT CODE: 0
+
+=== Strict CNN14 loading and CUDA inference ===
+$ "C:\Program Files\Python313\python.exe" src/check_cnn14.py --use-safe-weights
+PyTorch: 2.7.0+cu128
+Inference device: cuda
+GPU: NVIDIA GeForce RTX 3050 Laptop GPU
+GPU total memory (GiB): 4.0
+Loading tensor-only exported state dictionary (restricted loader) ...
+Model state_dict parameter/buffer keys: 84
+Strict pretrained checkpoint loading: PASS (no missing or unexpected keys)
+Total parameters (backbone + new head): 81,857,561
+New head parameters: 20,490
+Input waveform shape: (1, 128000)
+Original AudioSet predictions: (1, 527)
+Pretrained embedding shape: (1, 2048)
+UrbanSound8K logits shape: (1, 10)
+CNN14 checkpoint + forward-pass verification: PASS
+The new 10-class head is randomly initialized; no fine-tuning was performed.
+EXIT CODE: 0
+
+=== Strict CNN14 loading and CPU inference ===
+$ "C:\Program Files\Python313\python.exe" src/check_cnn14.py --cpu --use-safe-weights
+PyTorch: 2.7.0+cu128
+Inference device: cpu
+Loading tensor-only exported state dictionary (restricted loader) ...
+Model state_dict parameter/buffer keys: 84
+Strict pretrained checkpoint loading: PASS (no missing or unexpected keys)
+Total parameters (backbone + new head): 81,857,561
+New head parameters: 20,490
+Input waveform shape: (1, 128000)
+Original AudioSet predictions: (1, 527)
+Pretrained embedding shape: (1, 2048)
+UrbanSound8K logits shape: (1, 10)
+CNN14 checkpoint + forward-pass verification: PASS
+The new 10-class head is randomly initialized; no fine-tuning was performed.
+EXIT CODE: 0
+
+=== Validate all 10 official train/validation/test splits ===
+$ "C:\Program Files\Python313\python.exe" src/check_folds.py
+Metadata, classID labels, and unique clip paths: PASS
+WARNING: 5 Freesound source IDs appear in multiple official folds.
+This is a potential source-related evaluation dependence; do NOT change folds.
+Review the recorded source IDs, folds and time intervals:
+  fsID folds  clip_count class_ids  cross_fold_time_overlap_pairs
+ 77751   2,7          30       4,7                             31
+106905   1,8           7       5,8                              0
+132016   1,4          15       7,9                              0
+176638   1,4           5       1,5                              1
+180937   1,9          95       4,7                             57
+
+Test | Val | Train | Validation | Test | Total | Source-ID overlaps (T/V, T/E, V/E)
+-------------------------------------------------------------------------------------------
+   1 |   2 |  6971 |        888 |  873 |  8732 | 1/4/0
+   2 |   3 |  6919 |        925 |  888 |  8732 | 0/1/0
+   3 |   4 |  6817 |        990 |  925 |  8732 | 2/0/0
+   4 |   5 |  6806 |        936 |  990 |  8732 | 0/2/0
+   5 |   6 |  6973 |        823 |  936 |  8732 | 0/0/0
+   6 |   7 |  7071 |        838 |  823 |  8732 | 1/0/0
+   7 |   8 |  7088 |        806 |  838 |  8732 | 1/1/0
+   8 |   9 |  7110 |        816 |  806 |  8732 | 1/1/0
+   9 |  10 |  7079 |        837 |  816 |  8732 | 0/1/0
+  10 |   1 |  7022 |        873 |  837 |  8732 | 4/0/0
+
+Official ten-fold, 8-train/1-val/1-test clip partition: PASS
+Summary: D:\EnvironmentalSoundRecognition\results\fold_split_summary.csv
+Source-ID audit: D:\EnvironmentalSoundRecognition\results\cross_fold_source_summary.csv
+Affected source clips: D:\EnvironmentalSoundRecognition\results\cross_fold_source_details.csv
+SOURCE-ISOLATION WARNING remains open; investigate before model training.
+No clips were moved, removed, or relabelled; no model was trained.
+EXIT CODE: 0
+
+=== Run Stage 3 waveform-processing unit tests ===
+$ "C:\Program Files\Python313\python.exe" -m unittest discover -s tests -v
+test_center_crop_is_deterministic (test_dataset.WaveformTests.test_center_crop_is_deterministic) ... ok
+test_dataset_returns_float_waveform_and_official_label (test_dataset.WaveformTests.test_dataset_returns_float_waveform_and_official_label) ... ok
+test_splits_are_disjoint (test_dataset.WaveformTests.test_splits_are_disjoint) ... ok
+test_stereo_resampling_and_padding (test_dataset.WaveformTests.test_stereo_resampling_and_padding) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.475s
+
+OK
+EXIT CODE: 0
+
+=== Pilot audio decode audit (50 files) ===
+$ "C:\Program Files\Python313\python.exe" -m src.audit_audio --max-files 50
+
+Decoding WAV files:   0%|          | 0/50 [00:00<?, ?it/s]
+Decoding WAV files:  66%|██████▌   | 33/50 [00:00<00:00, 323.97it/s]
+Decoding WAV files: 100%|██████████| 50/50 [00:00<00:00, 317.62it/s]
+Metadata: 8732 rows; 10 official classes; 10 folds
+Audio scan: 50 decoded, 0 invalid;
+PILOT AUDIT ONLY (not full dataset integrity validation)
+Sample rates: {44100: np.int64(50)}
+Duration (min/median/mean/max seconds): {'min': 0.31755102040816324, 'median': 4.0, 'mean': 3.6380281179138323, 'max': 4.0}
+Clips longer than 4.001 s: 0
+Outer test fold 1: train 6971 validation 888 test 873
+Reports: D:\EnvironmentalSoundRecognition\results
+Figures: D:\EnvironmentalSoundRecognition\figures
+Reminder: source-level overlap warning is not cleared by this audit.
+EXIT CODE: 0
+
+=== Full audio decode audit (all 8,732 files) ===
+$ "C:\Program Files\Python313\python.exe" -m src.audit_audio
+
+Decoding WAV files:   0%|          | 0/8732 [00:00<?, ?it/s]
+Decoding WAV files:   0%|          | 33/8732 [00:00<00:26, 329.60it/s]
+Decoding WAV files:   1%|          | 66/8732 [00:00<00:30, 287.91it/s]
+Decoding WAV files:   1%|          | 96/8732 [00:00<00:33, 256.89it/s]
+Decoding WAV files:   1%|▏         | 126/8732 [00:00<00:31, 271.36it/s]
+Decoding WAV files:   2%|▏         | 154/8732 [00:00<00:32, 261.45it/s]
+Decoding WAV files:   2%|▏         | 181/8732 [00:00<00:33, 253.36it/s]
+Decoding WAV files:   2%|▏         | 207/8732 [00:00<00:33, 255.33it/s]
+Decoding WAV files:   3%|▎         | 233/8732 [00:00<00:34, 245.74it/s]
+Decoding WAV files:   3%|▎         | 258/8732 [00:01<00:35, 237.76it/s]
+Decoding WAV files:   3%|▎         | 282/8732 [00:01<00:35, 237.72it/s]
+Decoding WAV files:   4%|▎         | 306/8732 [00:01<00:48, 173.00it/s]
+Decoding WAV files:   4%|▍         | 329/8732 [00:01<00:45, 186.06it/s]
+Decoding WAV files:   4%|▍         | 352/8732 [00:01<00:42, 195.82it/s]
+Decoding WAV files:   4%|▍         | 374/8732 [00:01<00:42, 196.88it/s]
+Decoding WAV files:   5%|▍         | 396/8732 [00:01<00:41, 202.64it/s]
+Decoding WAV files:   5%|▍         | 420/8732 [00:01<00:39, 212.54it/s]
+Decoding WAV files:   5%|▌         | 445/8732 [00:01<00:37, 222.38it/s]
+Decoding WAV files:   5%|▌         | 477/8732 [00:02<00:33, 249.07it/s]
+Decoding WAV files:   6%|▌         | 506/8732 [00:02<00:31, 258.05it/s]
+Decoding WAV files:   6%|▌         | 533/8732 [00:02<00:33, 246.66it/s]
+Decoding WAV files:   6%|▋         | 559/8732 [00:02<00:32, 250.16it/s]
+Decoding WAV files:   7%|▋         | 586/8732 [00:02<00:31, 255.44it/s]
+Decoding WAV files:   7%|▋         | 615/8732 [00:02<00:30, 262.92it/s]
+Decoding WAV files:   7%|▋         | 642/8732 [00:02<00:30, 261.22it/s]
+Decoding WAV files:   8%|▊         | 669/8732 [00:02<00:31, 258.66it/s]
+Decoding WAV files:   8%|▊         | 695/8732 [00:02<00:37, 214.85it/s]
+Decoding WAV files:   8%|▊         | 718/8732 [00:03<00:48, 166.25it/s]
+Decoding WAV files:   8%|▊         | 737/8732 [00:03<00:54, 145.53it/s]
+Decoding WAV files:   9%|▊         | 754/8732 [00:03<00:59, 133.23it/s]
+Decoding WAV files:   9%|▉         | 779/8732 [00:03<00:50, 157.06it/s]
+Decoding WAV files:   9%|▉         | 803/8732 [00:03<00:45, 175.61it/s]
+Decoding WAV files:  10%|▉         | 833/8732 [00:03<00:38, 205.40it/s]
+Decoding WAV files:  10%|▉         | 860/8732 [00:03<00:35, 220.45it/s]
+Decoding WAV files:  10%|█         | 889/8732 [00:04<00:33, 236.94it/s]
+Decoding WAV files:  10%|█         | 914/8732 [00:04<00:32, 237.60it/s]
+Decoding WAV files:  11%|█         | 951/8732 [00:04<00:28, 271.81it/s]
+Decoding WAV files:  11%|█         | 979/8732 [00:04<00:30, 258.10it/s]
+Decoding WAV files:  12%|█▏        | 1006/8732 [00:04<00:29, 261.18it/s]
+Decoding WAV files:  12%|█▏        | 1033/8732 [00:04<00:30, 253.95it/s]
+Decoding WAV files:  12%|█▏        | 1059/8732 [00:04<00:30, 249.30it/s]
+Decoding WAV files:  12%|█▏        | 1091/8732 [00:04<00:28, 268.51it/s]
+Decoding WAV files:  13%|█▎        | 1119/8732 [00:04<00:29, 261.97it/s]
+Decoding WAV files:  13%|█▎        | 1146/8732 [00:05<00:29, 260.37it/s]
+Decoding WAV files:  14%|█▎        | 1179/8732 [00:05<00:26, 279.83it/s]
+Decoding WAV files:  14%|█▍        | 1208/8732 [00:05<00:29, 253.14it/s]
+Decoding WAV files:  14%|█▍        | 1234/8732 [00:05<00:33, 224.04it/s]
+Decoding WAV files:  14%|█▍        | 1258/8732 [00:05<00:33, 223.71it/s]
+Decoding WAV files:  15%|█▍        | 1287/8732 [00:05<00:31, 238.97it/s]
+Decoding WAV files:  15%|█▌        | 1314/8732 [00:05<00:30, 247.11it/s]
+Decoding WAV files:  15%|█▌        | 1340/8732 [00:05<00:30, 241.99it/s]
+Decoding WAV files:  16%|█▌        | 1365/8732 [00:05<00:31, 232.63it/s]
+Decoding WAV files:  16%|█▌        | 1389/8732 [00:06<00:34, 210.85it/s]
+Decoding WAV files:  16%|█▌        | 1416/8732 [00:06<00:32, 226.05it/s]
+Decoding WAV files:  17%|█▋        | 1455/8732 [00:06<00:26, 270.29it/s]
+Decoding WAV files:  17%|█▋        | 1498/8732 [00:06<00:23, 313.63it/s]
+Decoding WAV files:  18%|█▊        | 1531/8732 [00:06<00:26, 272.52it/s]
+Decoding WAV files:  18%|█▊        | 1560/8732 [00:06<00:26, 268.56it/s]
+Decoding WAV files:  18%|█▊        | 1588/8732 [00:06<00:27, 262.94it/s]
+Decoding WAV files:  19%|█▊        | 1616/8732 [00:06<00:27, 261.75it/s]
+Decoding WAV files:  19%|█▉        | 1645/8732 [00:06<00:26, 267.07it/s]
+Decoding WAV files:  19%|█▉        | 1673/8732 [00:07<00:27, 258.00it/s]
+Decoding WAV files:  19%|█▉        | 1700/8732 [00:07<00:30, 232.45it/s]
+Decoding WAV files:  20%|█▉        | 1724/8732 [00:07<00:32, 215.11it/s]
+Decoding WAV files:  20%|██        | 1747/8732 [00:07<00:33, 209.09it/s]
+Decoding WAV files:  20%|██        | 1769/8732 [00:07<00:36, 193.19it/s]
+Decoding WAV files:  21%|██        | 1797/8732 [00:07<00:32, 214.12it/s]
+Decoding WAV files:  21%|██        | 1831/8732 [00:07<00:28, 246.36it/s]
+Decoding WAV files:  21%|██▏       | 1857/8732 [00:07<00:28, 240.97it/s]
+Decoding WAV files:  22%|██▏       | 1882/8732 [00:08<00:30, 225.30it/s]
+Decoding WAV files:  22%|██▏       | 1906/8732 [00:08<00:31, 217.73it/s]
+Decoding WAV files:  22%|██▏       | 1929/8732 [00:08<00:32, 211.72it/s]
+Decoding WAV files:  22%|██▏       | 1951/8732 [00:08<00:32, 210.24it/s]
+Decoding WAV files:  23%|██▎       | 1984/8732 [00:08<00:27, 241.76it/s]
+Decoding WAV files:  23%|██▎       | 2009/8732 [00:08<00:29, 229.76it/s]
+Decoding WAV files:  23%|██▎       | 2044/8732 [00:08<00:25, 261.68it/s]
+Decoding WAV files:  24%|██▎       | 2071/8732 [00:08<00:25, 261.20it/s]
+Decoding WAV files:  24%|██▍       | 2098/8732 [00:08<00:27, 245.33it/s]
+Decoding WAV files:  24%|██▍       | 2129/8732 [00:09<00:25, 260.46it/s]
+Decoding WAV files:  25%|██▍       | 2156/8732 [00:09<00:28, 226.84it/s]
+Decoding WAV files:  25%|██▍       | 2180/8732 [00:09<00:29, 223.93it/s]
+Decoding WAV files:  25%|██▌       | 2204/8732 [00:09<00:30, 216.55it/s]
+Decoding WAV files:  26%|██▌       | 2227/8732 [00:09<00:29, 218.82it/s]
+Decoding WAV files:  26%|██▌       | 2250/8732 [00:09<00:33, 194.80it/s]
+Decoding WAV files:  26%|██▌       | 2271/8732 [00:09<00:32, 195.96it/s]
+Decoding WAV files:  26%|██▋       | 2294/8732 [00:09<00:31, 203.77it/s]
+Decoding WAV files:  27%|██▋       | 2326/8732 [00:10<00:27, 232.70it/s]
+Decoding WAV files:  27%|██▋       | 2350/8732 [00:10<00:28, 226.72it/s]
+Decoding WAV files:  27%|██▋       | 2374/8732 [00:10<00:29, 216.57it/s]
+Decoding WAV files:  27%|██▋       | 2396/8732 [00:10<00:29, 215.84it/s]
+Decoding WAV files:  28%|██▊       | 2420/8732 [00:10<00:28, 220.81it/s]
+Decoding WAV files:  28%|██▊       | 2444/8732 [00:10<00:27, 225.54it/s]
+Decoding WAV files:  28%|██▊       | 2485/8732 [00:10<00:22, 277.92it/s]
+Decoding WAV files:  29%|██▉       | 2525/8732 [00:10<00:19, 312.96it/s]
+Decoding WAV files:  29%|██▉       | 2557/8732 [00:10<00:20, 302.95it/s]
+Decoding WAV files:  30%|██▉       | 2588/8732 [00:11<00:21, 288.71it/s]
+Decoding WAV files:  30%|███       | 2624/8732 [00:11<00:20, 305.02it/s]
+Decoding WAV files:  30%|███       | 2655/8732 [00:11<00:24, 245.61it/s]
+Decoding WAV files:  31%|███       | 2682/8732 [00:11<00:27, 218.30it/s]
+Decoding WAV files:  31%|███       | 2706/8732 [00:11<00:29, 204.72it/s]
+Decoding WAV files:  31%|███       | 2728/8732 [00:11<00:30, 197.48it/s]
+Decoding WAV files:  31%|███▏      | 2749/8732 [00:11<00:31, 189.39it/s]
+Decoding WAV files:  32%|███▏      | 2769/8732 [00:11<00:32, 185.53it/s]
+Decoding WAV files:  32%|███▏      | 2790/8732 [00:12<00:31, 189.63it/s]
+Decoding WAV files:  32%|███▏      | 2811/8732 [00:12<00:30, 193.42it/s]
+Decoding WAV files:  32%|███▏      | 2832/8732 [00:12<00:30, 192.03it/s]
+Decoding WAV files:  33%|███▎      | 2852/8732 [00:12<00:31, 185.92it/s]
+Decoding WAV files:  33%|███▎      | 2871/8732 [00:12<00:47, 122.15it/s]
+Decoding WAV files:  33%|███▎      | 2892/8732 [00:12<00:41, 139.46it/s]
+Decoding WAV files:  33%|███▎      | 2909/8732 [00:12<00:42, 138.02it/s]
+Decoding WAV files:  33%|███▎      | 2925/8732 [00:13<00:47, 122.25it/s]
+Decoding WAV files:  34%|███▎      | 2939/8732 [00:13<00:50, 114.15it/s]
+Decoding WAV files:  34%|███▍      | 2952/8732 [00:13<00:51, 112.55it/s]
+Decoding WAV files:  34%|███▍      | 2964/8732 [00:13<00:53, 108.16it/s]
+Decoding WAV files:  34%|███▍      | 2983/8732 [00:13<00:45, 127.66it/s]
+Decoding WAV files:  35%|███▍      | 3024/8732 [00:13<00:28, 198.52it/s]
+Decoding WAV files:  35%|███▍      | 3046/8732 [00:13<00:28, 199.37it/s]
+Decoding WAV files:  35%|███▌      | 3074/8732 [00:13<00:25, 218.97it/s]
+Decoding WAV files:  35%|███▌      | 3099/8732 [00:14<00:25, 224.78it/s]
+Decoding WAV files:  36%|███▌      | 3123/8732 [00:14<00:25, 220.85it/s]
+Decoding WAV files:  36%|███▌      | 3146/8732 [00:14<00:26, 207.36it/s]
+Decoding WAV files:  36%|███▋      | 3176/8732 [00:14<00:23, 232.20it/s]
+Decoding WAV files:  37%|███▋      | 3201/8732 [00:14<00:23, 235.64it/s]
+Decoding WAV files:  37%|███▋      | 3226/8732 [00:14<00:24, 222.66it/s]
+Decoding WAV files:  37%|███▋      | 3249/8732 [00:14<00:26, 210.46it/s]
+Decoding WAV files:  37%|███▋      | 3271/8732 [00:14<00:26, 209.32it/s]
+Decoding WAV files:  38%|███▊      | 3299/8732 [00:14<00:23, 227.79it/s]
+Decoding WAV files:  38%|███▊      | 3330/8732 [00:15<00:21, 249.40it/s]
+Decoding WAV files:  38%|███▊      | 3356/8732 [00:15<00:25, 213.87it/s]
+Decoding WAV files:  39%|███▊      | 3379/8732 [00:15<00:26, 204.18it/s]
+Decoding WAV files:  39%|███▉      | 3401/8732 [00:15<00:26, 198.00it/s]
+Decoding WAV files:  39%|███▉      | 3422/8732 [00:15<00:47, 112.71it/s]
+Decoding WAV files:  39%|███▉      | 3438/8732 [00:16<00:53, 98.66it/s] 
+Decoding WAV files:  40%|███▉      | 3452/8732 [00:16<01:03, 83.33it/s]
+Decoding WAV files:  40%|███▉      | 3463/8732 [00:16<01:05, 80.70it/s]
+Decoding WAV files:  40%|███▉      | 3474/8732 [00:16<01:01, 85.63it/s]
+Decoding WAV files:  40%|███▉      | 3488/8732 [00:16<00:54, 95.54it/s]
+Decoding WAV files:  40%|████      | 3500/8732 [00:16<01:02, 84.32it/s]
+Decoding WAV files:  40%|████      | 3510/8732 [00:17<01:08, 76.07it/s]
+Decoding WAV files:  40%|████      | 3519/8732 [00:17<01:17, 67.55it/s]
+Decoding WAV files:  40%|████      | 3527/8732 [00:17<01:23, 62.49it/s]
+Decoding WAV files:  40%|████      | 3534/8732 [00:17<01:21, 63.57it/s]
+Decoding WAV files:  41%|████      | 3541/8732 [00:17<01:23, 61.93it/s]
+Decoding WAV files:  41%|████      | 3548/8732 [00:17<01:28, 58.88it/s]
+Decoding WAV files:  41%|████      | 3555/8732 [00:17<01:30, 57.25it/s]
+Decoding WAV files:  41%|████      | 3562/8732 [00:18<01:28, 58.74it/s]
+Decoding WAV files:  41%|████      | 3568/8732 [00:18<01:51, 46.27it/s]
+Decoding WAV files:  41%|████      | 3574/8732 [00:18<02:13, 38.64it/s]
+Decoding WAV files:  41%|████      | 3580/8732 [00:18<02:03, 41.64it/s]
+Decoding WAV files:  41%|████      | 3585/8732 [00:18<02:01, 42.28it/s]
+Decoding WAV files:  41%|████      | 3595/8732 [00:18<01:34, 54.40it/s]
+Decoding WAV files:  41%|████▏     | 3603/8732 [00:18<01:25, 60.21it/s]
+Decoding WAV files:  41%|████▏     | 3616/8732 [00:18<01:06, 77.27it/s]
+Decoding WAV files:  42%|████▏     | 3633/8732 [00:19<00:50, 100.98it/s]
+Decoding WAV files:  42%|████▏     | 3655/8732 [00:19<00:38, 132.98it/s]
+Decoding WAV files:  42%|████▏     | 3674/8732 [00:19<00:34, 148.54it/s]
+Decoding WAV files:  42%|████▏     | 3695/8732 [00:19<00:30, 165.78it/s]
+Decoding WAV files:  43%|████▎     | 3724/8732 [00:19<00:25, 197.44it/s]
+Decoding WAV files:  43%|████▎     | 3745/8732 [00:19<00:26, 185.99it/s]
+Decoding WAV files:  43%|████▎     | 3764/8732 [00:19<00:27, 183.76it/s]
+Decoding WAV files:  43%|████▎     | 3783/8732 [00:19<00:27, 181.98it/s]
+Decoding WAV files:  44%|████▎     | 3803/8732 [00:19<00:26, 184.73it/s]
+Decoding WAV files:  44%|████▍     | 3822/8732 [00:20<00:27, 179.53it/s]
+Decoding WAV files:  44%|████▍     | 3841/8732 [00:20<00:27, 177.52it/s]
+Decoding WAV files:  44%|████▍     | 3865/8732 [00:20<00:25, 192.32it/s]
+Decoding WAV files:  45%|████▍     | 3886/8732 [00:20<00:24, 195.52it/s]
+Decoding WAV files:  45%|████▍     | 3906/8732 [00:20<00:25, 192.12it/s]
+Decoding WAV files:  45%|████▍     | 3926/8732 [00:20<00:24, 192.91it/s]
+Decoding WAV files:  45%|████▌     | 3946/8732 [00:20<00:25, 189.54it/s]
+Decoding WAV files:  45%|████▌     | 3966/8732 [00:20<00:24, 190.89it/s]
+Decoding WAV files:  46%|████▌     | 3995/8732 [00:20<00:21, 217.43it/s]
+Decoding WAV files:  46%|████▌     | 4017/8732 [00:21<00:23, 202.39it/s]
+Decoding WAV files:  46%|████▌     | 4038/8732 [00:21<00:24, 194.82it/s]
+Decoding WAV files:  46%|████▋     | 4058/8732 [00:21<00:24, 190.14it/s]
+Decoding WAV files:  47%|████▋     | 4078/8732 [00:21<00:24, 189.00it/s]
+Decoding WAV files:  47%|████▋     | 4097/8732 [00:21<00:25, 183.26it/s]
+Decoding WAV files:  47%|████▋     | 4116/8732 [00:21<00:24, 185.10it/s]
+Decoding WAV files:  47%|████▋     | 4139/8732 [00:21<00:23, 196.30it/s]
+Decoding WAV files:  48%|████▊     | 4171/8732 [00:21<00:19, 231.49it/s]
+Decoding WAV files:  48%|████▊     | 4195/8732 [00:21<00:21, 214.40it/s]
+Decoding WAV files:  48%|████▊     | 4217/8732 [00:22<00:21, 213.19it/s]
+Decoding WAV files:  49%|████▊     | 4239/8732 [00:22<00:21, 209.20it/s]
+Decoding WAV files:  49%|████▉     | 4261/8732 [00:22<00:21, 211.12it/s]
+Decoding WAV files:  49%|████▉     | 4288/8732 [00:22<00:19, 226.07it/s]
+Decoding WAV files:  49%|████▉     | 4311/8732 [00:22<00:24, 179.16it/s]
+Decoding WAV files:  50%|████▉     | 4331/8732 [00:22<00:31, 139.64it/s]
+Decoding WAV files:  50%|████▉     | 4348/8732 [00:22<00:34, 126.80it/s]
+Decoding WAV files:  50%|████▉     | 4363/8732 [00:23<00:35, 121.39it/s]
+Decoding WAV files:  50%|█████     | 4377/8732 [00:23<00:37, 117.36it/s]
+Decoding WAV files:  50%|█████     | 4390/8732 [00:23<00:38, 111.95it/s]
+Decoding WAV files:  51%|█████     | 4416/8732 [00:23<00:29, 144.79it/s]
+Decoding WAV files:  51%|█████     | 4444/8732 [00:23<00:24, 177.41it/s]
+Decoding WAV files:  51%|█████     | 4469/8732 [00:23<00:21, 195.84it/s]
+Decoding WAV files:  51%|█████▏    | 4492/8732 [00:23<00:20, 202.90it/s]
+Decoding WAV files:  52%|█████▏    | 4514/8732 [00:23<00:21, 197.56it/s]
+Decoding WAV files:  52%|█████▏    | 4535/8732 [00:23<00:21, 199.31it/s]
+Decoding WAV files:  52%|█████▏    | 4558/8732 [00:24<00:20, 207.21it/s]
+Decoding WAV files:  53%|█████▎    | 4585/8732 [00:24<00:18, 223.38it/s]
+Decoding WAV files:  53%|█████▎    | 4608/8732 [00:24<00:18, 221.51it/s]
+Decoding WAV files:  53%|█████▎    | 4631/8732 [00:24<00:19, 212.74it/s]
+Decoding WAV files:  53%|█████▎    | 4660/8732 [00:24<00:17, 228.35it/s]
+Decoding WAV files:  54%|█████▎    | 4684/8732 [00:24<00:23, 175.91it/s]
+Decoding WAV files:  54%|█████▍    | 4704/8732 [00:24<00:23, 170.93it/s]
+Decoding WAV files:  54%|█████▍    | 4730/8732 [00:24<00:21, 188.62it/s]
+Decoding WAV files:  54%|█████▍    | 4752/8732 [00:25<00:20, 195.09it/s]
+Decoding WAV files:  55%|█████▍    | 4774/8732 [00:25<00:19, 200.55it/s]
+Decoding WAV files:  55%|█████▍    | 4796/8732 [00:25<00:19, 205.83it/s]
+Decoding WAV files:  55%|█████▌    | 4821/8732 [00:25<00:18, 216.11it/s]
+Decoding WAV files:  55%|█████▌    | 4844/8732 [00:25<00:18, 212.16it/s]
+Decoding WAV files:  56%|█████▌    | 4866/8732 [00:25<00:18, 204.68it/s]
+Decoding WAV files:  56%|█████▌    | 4887/8732 [00:25<00:20, 190.63it/s]
+Decoding WAV files:  56%|█████▌    | 4907/8732 [00:25<00:20, 189.64it/s]
+Decoding WAV files:  56%|█████▋    | 4928/8732 [00:25<00:19, 191.07it/s]
+Decoding WAV files:  57%|█████▋    | 4948/8732 [00:26<00:24, 157.56it/s]
+Decoding WAV files:  57%|█████▋    | 4965/8732 [00:26<00:25, 147.80it/s]
+Decoding WAV files:  57%|█████▋    | 4989/8732 [00:26<00:22, 169.18it/s]
+Decoding WAV files:  57%|█████▋    | 5009/8732 [00:26<00:21, 175.21it/s]
+Decoding WAV files:  58%|█████▊    | 5032/8732 [00:26<00:19, 188.42it/s]
+Decoding WAV files:  58%|█████▊    | 5056/8732 [00:26<00:18, 200.81it/s]
+Decoding WAV files:  58%|█████▊    | 5078/8732 [00:26<00:17, 203.99it/s]
+Decoding WAV files:  58%|█████▊    | 5099/8732 [00:26<00:21, 172.77it/s]
+Decoding WAV files:  59%|█████▊    | 5127/8732 [00:27<00:18, 197.59it/s]
+Decoding WAV files:  59%|█████▉    | 5148/8732 [00:27<00:19, 185.56it/s]
+Decoding WAV files:  59%|█████▉    | 5172/8732 [00:27<00:17, 198.42it/s]
+Decoding WAV files:  59%|█████▉    | 5194/8732 [00:27<00:17, 202.09it/s]
+Decoding WAV files:  60%|█████▉    | 5215/8732 [00:27<00:17, 198.97it/s]
+Decoding WAV files:  60%|█████▉    | 5236/8732 [00:27<00:17, 201.23it/s]
+Decoding WAV files:  60%|██████    | 5257/8732 [00:27<00:17, 201.12it/s]
+Decoding WAV files:  61%|██████    | 5284/8732 [00:27<00:15, 218.66it/s]
+Decoding WAV files:  61%|██████    | 5307/8732 [00:27<00:15, 220.99it/s]
+Decoding WAV files:  61%|██████    | 5330/8732 [00:28<00:15, 216.00it/s]
+Decoding WAV files:  61%|██████▏   | 5353/8732 [00:28<00:15, 219.86it/s]
+Decoding WAV files:  62%|██████▏   | 5376/8732 [00:28<00:15, 221.60it/s]
+Decoding WAV files:  62%|██████▏   | 5399/8732 [00:28<00:15, 214.84it/s]
+Decoding WAV files:  62%|██████▏   | 5421/8732 [00:28<00:15, 207.83it/s]
+Decoding WAV files:  62%|██████▏   | 5442/8732 [00:28<00:16, 203.98it/s]
+Decoding WAV files:  63%|██████▎   | 5472/8732 [00:28<00:14, 230.39it/s]
+Decoding WAV files:  63%|██████▎   | 5496/8732 [00:28<00:14, 219.13it/s]
+Decoding WAV files:  63%|██████▎   | 5519/8732 [00:28<00:14, 220.21it/s]
+Decoding WAV files:  64%|██████▎   | 5551/8732 [00:28<00:12, 247.48it/s]
+Decoding WAV files:  64%|██████▍   | 5577/8732 [00:29<00:13, 235.99it/s]
+Decoding WAV files:  64%|██████▍   | 5601/8732 [00:29<00:13, 229.23it/s]
+Decoding WAV files:  64%|██████▍   | 5625/8732 [00:29<00:14, 220.56it/s]
+Decoding WAV files:  65%|██████▍   | 5648/8732 [00:29<00:14, 218.16it/s]
+Decoding WAV files:  65%|██████▍   | 5675/8732 [00:29<00:13, 229.98it/s]
+Decoding WAV files:  65%|██████▌   | 5706/8732 [00:29<00:12, 250.26it/s]
+Decoding WAV files:  66%|██████▌   | 5732/8732 [00:29<00:12, 247.72it/s]
+Decoding WAV files:  66%|██████▌   | 5757/8732 [00:29<00:12, 239.03it/s]
+Decoding WAV files:  66%|██████▌   | 5782/8732 [00:30<00:13, 219.90it/s]
+Decoding WAV files:  66%|██████▋   | 5805/8732 [00:30<00:14, 208.57it/s]
+Decoding WAV files:  67%|██████▋   | 5827/8732 [00:30<00:14, 202.40it/s]
+Decoding WAV files:  67%|██████▋   | 5848/8732 [00:30<00:14, 201.55it/s]
+Decoding WAV files:  67%|██████▋   | 5872/8732 [00:30<00:13, 211.58it/s]
+Decoding WAV files:  68%|██████▊   | 5912/8732 [00:30<00:10, 261.79it/s]
+Decoding WAV files:  68%|██████▊   | 5939/8732 [00:30<00:10, 255.67it/s]
+Decoding WAV files:  68%|██████▊   | 5965/8732 [00:30<00:11, 241.42it/s]
+Decoding WAV files:  69%|██████▊   | 6003/8732 [00:30<00:09, 278.76it/s]
+Decoding WAV files:  69%|██████▉   | 6032/8732 [00:31<00:10, 253.21it/s]
+Decoding WAV files:  69%|██████▉   | 6059/8732 [00:31<00:11, 237.08it/s]
+Decoding WAV files:  70%|██████▉   | 6084/8732 [00:31<00:11, 236.55it/s]
+Decoding WAV files:  70%|██████▉   | 6110/8732 [00:31<00:10, 242.10it/s]
+Decoding WAV files:  70%|███████   | 6141/8732 [00:31<00:09, 260.35it/s]
+Decoding WAV files:  71%|███████   | 6184/8732 [00:31<00:08, 304.57it/s]
+Decoding WAV files:  71%|███████   | 6215/8732 [00:31<00:09, 271.92it/s]
+Decoding WAV files:  72%|███████▏  | 6244/8732 [00:31<00:09, 253.82it/s]
+Decoding WAV files:  72%|███████▏  | 6282/8732 [00:31<00:08, 285.33it/s]
+Decoding WAV files:  72%|███████▏  | 6312/8732 [00:32<00:09, 263.50it/s]
+Decoding WAV files:  73%|███████▎  | 6340/8732 [00:32<00:09, 245.23it/s]
+Decoding WAV files:  73%|███████▎  | 6366/8732 [00:32<00:09, 240.01it/s]
+Decoding WAV files:  73%|███████▎  | 6394/8732 [00:32<00:09, 249.94it/s]
+Decoding WAV files:  74%|███████▎  | 6420/8732 [00:32<00:09, 246.56it/s]
+Decoding WAV files:  74%|███████▍  | 6445/8732 [00:32<00:09, 241.50it/s]
+Decoding WAV files:  74%|███████▍  | 6482/8732 [00:32<00:08, 274.27it/s]
+Decoding WAV files:  75%|███████▍  | 6514/8732 [00:32<00:07, 283.72it/s]
+Decoding WAV files:  75%|███████▍  | 6543/8732 [00:33<00:08, 257.59it/s]
+Decoding WAV files:  75%|███████▌  | 6577/8732 [00:33<00:07, 279.05it/s]
+Decoding WAV files:  76%|███████▌  | 6606/8732 [00:33<00:07, 276.30it/s]
+Decoding WAV files:  76%|███████▌  | 6635/8732 [00:33<00:07, 267.77it/s]
+Decoding WAV files:  76%|███████▋  | 6663/8732 [00:33<00:07, 259.18it/s]
+Decoding WAV files:  77%|███████▋  | 6690/8732 [00:33<00:07, 258.28it/s]
+Decoding WAV files:  77%|███████▋  | 6717/8732 [00:33<00:08, 243.56it/s]
+Decoding WAV files:  77%|███████▋  | 6742/8732 [00:33<00:08, 226.14it/s]
+Decoding WAV files:  77%|███████▋  | 6765/8732 [00:33<00:08, 219.16it/s]
+Decoding WAV files:  78%|███████▊  | 6788/8732 [00:34<00:09, 215.26it/s]
+Decoding WAV files:  78%|███████▊  | 6810/8732 [00:34<00:09, 210.61it/s]
+Decoding WAV files:  78%|███████▊  | 6832/8732 [00:34<00:08, 211.44it/s]
+Decoding WAV files:  78%|███████▊  | 6854/8732 [00:34<00:09, 208.25it/s]
+Decoding WAV files:  79%|███████▉  | 6877/8732 [00:34<00:08, 212.84it/s]
+Decoding WAV files:  79%|███████▉  | 6900/8732 [00:34<00:08, 216.73it/s]
+Decoding WAV files:  79%|███████▉  | 6924/8732 [00:34<00:08, 221.63it/s]
+Decoding WAV files:  80%|███████▉  | 6947/8732 [00:34<00:08, 217.16it/s]
+Decoding WAV files:  80%|███████▉  | 6969/8732 [00:34<00:08, 214.75it/s]
+Decoding WAV files:  80%|████████  | 6992/8732 [00:34<00:08, 217.40it/s]
+Decoding WAV files:  80%|████████  | 7015/8732 [00:35<00:07, 220.10it/s]
+Decoding WAV files:  81%|████████  | 7043/8732 [00:35<00:07, 236.42it/s]
+Decoding WAV files:  81%|████████  | 7067/8732 [00:35<00:07, 229.17it/s]
+Decoding WAV files:  81%|████████  | 7090/8732 [00:35<00:07, 225.23it/s]
+Decoding WAV files:  81%|████████▏ | 7113/8732 [00:35<00:07, 225.95it/s]
+Decoding WAV files:  82%|████████▏ | 7137/8732 [00:35<00:06, 229.03it/s]
+Decoding WAV files:  82%|████████▏ | 7160/8732 [00:35<00:07, 221.54it/s]
+Decoding WAV files:  82%|████████▏ | 7183/8732 [00:35<00:07, 218.20it/s]
+Decoding WAV files:  83%|████████▎ | 7205/8732 [00:35<00:07, 214.83it/s]
+Decoding WAV files:  83%|████████▎ | 7232/8732 [00:36<00:06, 229.78it/s]
+Decoding WAV files:  83%|████████▎ | 7256/8732 [00:36<00:06, 224.47it/s]
+Decoding WAV files:  83%|████████▎ | 7280/8732 [00:36<00:06, 226.80it/s]
+Decoding WAV files:  84%|████████▎ | 7303/8732 [00:36<00:06, 226.94it/s]
+Decoding WAV files:  84%|████████▍ | 7342/8732 [00:36<00:05, 273.35it/s]
+Decoding WAV files:  84%|████████▍ | 7370/8732 [00:36<00:05, 257.47it/s]
+Decoding WAV files:  85%|████████▍ | 7408/8732 [00:36<00:04, 285.42it/s]
+Decoding WAV files:  85%|████████▌ | 7437/8732 [00:36<00:06, 215.02it/s]
+Decoding WAV files:  85%|████████▌ | 7462/8732 [00:37<00:05, 221.72it/s]
+Decoding WAV files:  86%|████████▌ | 7487/8732 [00:37<00:06, 202.59it/s]
+Decoding WAV files:  86%|████████▌ | 7509/8732 [00:37<00:06, 197.03it/s]
+Decoding WAV files:  86%|████████▌ | 7530/8732 [00:37<00:06, 197.65it/s]
+Decoding WAV files:  86%|████████▋ | 7551/8732 [00:37<00:05, 200.24it/s]
+Decoding WAV files:  87%|████████▋ | 7572/8732 [00:37<00:05, 201.07it/s]
+Decoding WAV files:  87%|████████▋ | 7618/8732 [00:37<00:04, 272.21it/s]
+Decoding WAV files:  88%|████████▊ | 7652/8732 [00:37<00:03, 291.11it/s]
+Decoding WAV files:  88%|████████▊ | 7682/8732 [00:37<00:03, 271.86it/s]
+Decoding WAV files:  88%|████████▊ | 7710/8732 [00:38<00:04, 253.43it/s]
+Decoding WAV files:  89%|████████▊ | 7737/8732 [00:38<00:04, 232.84it/s]
+Decoding WAV files:  89%|████████▉ | 7762/8732 [00:38<00:04, 226.10it/s]
+Decoding WAV files:  89%|████████▉ | 7786/8732 [00:38<00:04, 222.25it/s]
+Decoding WAV files:  89%|████████▉ | 7809/8732 [00:38<00:04, 213.31it/s]
+Decoding WAV files:  90%|████████▉ | 7831/8732 [00:38<00:04, 214.76it/s]
+Decoding WAV files:  90%|████████▉ | 7853/8732 [00:38<00:04, 209.55it/s]
+Decoding WAV files:  90%|█████████ | 7875/8732 [00:38<00:04, 202.61it/s]
+Decoding WAV files:  90%|█████████ | 7896/8732 [00:38<00:04, 200.97it/s]
+Decoding WAV files:  91%|█████████ | 7917/8732 [00:39<00:04, 199.24it/s]
+Decoding WAV files:  91%|█████████ | 7947/8732 [00:39<00:03, 226.53it/s]
+Decoding WAV files:  91%|█████████▏| 7970/8732 [00:39<00:03, 212.69it/s]
+Decoding WAV files:  92%|█████████▏| 7992/8732 [00:39<00:03, 203.81it/s]
+Decoding WAV files:  92%|█████████▏| 8016/8732 [00:39<00:03, 213.10it/s]
+Decoding WAV files:  92%|█████████▏| 8052/8732 [00:39<00:02, 253.69it/s]
+Decoding WAV files:  93%|█████████▎| 8091/8732 [00:39<00:02, 291.79it/s]
+Decoding WAV files:  93%|█████████▎| 8121/8732 [00:39<00:02, 280.15it/s]
+Decoding WAV files:  93%|█████████▎| 8150/8732 [00:39<00:02, 280.27it/s]
+Decoding WAV files:  94%|█████████▎| 8179/8732 [00:40<00:02, 267.51it/s]
+Decoding WAV files:  94%|█████████▍| 8207/8732 [00:40<00:02, 232.35it/s]
+Decoding WAV files:  94%|█████████▍| 8240/8732 [00:40<00:01, 254.80it/s]
+Decoding WAV files:  95%|█████████▍| 8267/8732 [00:40<00:01, 239.76it/s]
+Decoding WAV files:  95%|█████████▌| 8300/8732 [00:40<00:01, 262.31it/s]
+Decoding WAV files:  95%|█████████▌| 8332/8732 [00:40<00:01, 275.92it/s]
+Decoding WAV files:  96%|█████████▌| 8361/8732 [00:40<00:01, 266.31it/s]
+Decoding WAV files:  96%|█████████▌| 8389/8732 [00:40<00:01, 248.43it/s]
+Decoding WAV files:  96%|█████████▋| 8416/8732 [00:41<00:01, 252.95it/s]
+Decoding WAV files:  97%|█████████▋| 8442/8732 [00:41<00:01, 246.46it/s]
+Decoding WAV files:  97%|█████████▋| 8467/8732 [00:41<00:01, 236.82it/s]
+Decoding WAV files:  97%|█████████▋| 8491/8732 [00:41<00:01, 226.13it/s]
+Decoding WAV files:  98%|█████████▊| 8514/8732 [00:41<00:00, 218.71it/s]
+Decoding WAV files:  98%|█████████▊| 8536/8732 [00:41<00:00, 217.97it/s]
+Decoding WAV files:  98%|█████████▊| 8562/8732 [00:41<00:00, 226.79it/s]
+Decoding WAV files:  98%|█████████▊| 8585/8732 [00:41<00:00, 223.27it/s]
+Decoding WAV files:  99%|█████████▊| 8608/8732 [00:41<00:00, 221.34it/s]
+Decoding WAV files:  99%|█████████▉| 8636/8732 [00:42<00:00, 236.78it/s]
+Decoding WAV files:  99%|█████████▉| 8660/8732 [00:42<00:00, 233.21it/s]
+Decoding WAV files: 100%|█████████▉| 8699/8732 [00:42<00:00, 277.54it/s]
+Decoding WAV files: 100%|█████████▉| 8727/8732 [00:42<00:00, 276.12it/s]
+Decoding WAV files: 100%|██████████| 8732/8732 [00:42<00:00, 206.23it/s]
+Metadata: 8732 rows; 10 official classes; 10 folds
+Audio scan: 8732 decoded, 0 invalid;
+FULL AUDIT
+Sample rates: {8000: np.int64(12), 11024: np.int64(7), 11025: np.int64(39), 16000: np.int64(45), 22050: np.int64(44), 24000: np.int64(82), 32000: np.int64(4), 44100: np.int64(5370), 48000: np.int64(2502), 96000: np.int64(610), 192000: np.int64(17)}
+Duration (min/median/mean/max seconds): {'min': 0.05, 'median': 4.0, 'mean': 3.6075218292463376, 'max': 4.036647314949202}
+Clips longer than 4.001 s: 8
+Outer test fold 1: train 6971 validation 888 test 873
+Reports: D:\EnvironmentalSoundRecognition\results
+Figures: D:\EnvironmentalSoundRecognition\figures
+Reminder: source-level overlap warning is not cleared by this audit.
+EXIT CODE: 0
+
+=== Validate real audio DataLoaders ===
+$ "C:\Program Files\Python313\python.exe" -m src.check_dataloader
+Train, validation, test counts: 6971 888 873
+train waveforms (2, 128000) labels [3, 0] PASS
+validation waveforms (2, 128000) labels [3, 3] PASS
+test waveforms (2, 128000) labels [3, 3] PASS
+Stage 3 DataLoader sanity checks: PASS
+No audio augmentation, model training, or fine-tuning was performed.
+EXIT CODE: 0
+
+=== Run real UrbanSound8K audio through CNN14 ===
+$ "C:\Program Files\Python313\python.exe" -m src.check_dataloader --model-forward
+Train, validation, test counts: 6971 888 873
+train waveforms (2, 128000) labels [3, 0] PASS
+validation waveforms (2, 128000) labels [3, 3] PASS
+test waveforms (2, 128000) labels [3, 3] PASS
+Real UrbanSound8K waveform -> official CNN14 -> [1, 10] logits: PASS
+The 10-class head is UNTRAINED; predictions are not meaningful yet.
+Stage 3 DataLoader sanity checks: PASS
+No audio augmentation, model training, or fine-tuning was performed.
+EXIT CODE: 0
+
+=== Refresh locally observed dependency lock ===
+$ "C:\Program Files\Python313\python.exe" finalize_requirements.py
+Wrote D:\EnvironmentalSoundRecognition\requirements.lock.txt
+PyTorch version: 2.7.0+cu128
+EXIT CODE: 0
