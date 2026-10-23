@@ -2,7 +2,7 @@
 
 **Dataset:** UrbanSound8K · **Backbone:** official AudioSet-pretrained PANNs CNN14 · **Framework:** PyTorch  
 **Task:** Single-label classification of ten urban/environmental sound classes  
-**Project status (23 October 2026):** Stage 2 verification complete; Stage 3 implementation prepared and **awaiting complete execution on the local dataset**. Model training, fine-tuning, evaluation, CO4 comparisons, and CO5 ablations are **not yet complete**.
+**Project status (23 October 2026):** **Stage 2 and Stage 3 verification complete on the local Windows PC** (13/13 full-run checks, 8,732/8,732 WAV decodes, 0 invalid, real-audio CNN14 forward). Stage 4 fine-tuning **implemented in code and awaiting local gradient/training execution**. Source-ID overlap warning remains open. No UrbanSound8K training/evaluation metrics are yet available.
 
 > This is the living README for the current **UrbanSound8K/PANNs CNN14** project. Earlier ESC-50/SimpleCNN notebook experiments are historical and **must not** be reported as results of this project.
 
@@ -33,7 +33,7 @@ These are **planned experiments**, not completed results. We will use `CrossEntr
 
 ## 2. Dataset and label mapping
 
-**Official source:** https://urbansounddataset.weebly.com/urbansound8k.html  
+**Official source:** <https://urbansounddataset.weebly.com/urbansound8k.html>  
 **Local expected path:** `data/UrbanSound8K/`  
 **Metadata:** `data/UrbanSound8K/metadata/UrbanSound8K.csv`
 
@@ -43,7 +43,7 @@ The user's executed `check_urbansound8k.py` output confirmed:
 
 - 8,732 metadata entries and 8,732 `.wav` files across folders `fold1`–`fold10`.
 - All required WAV paths existed; no invalid class IDs or fold values were found in the metadata check.
-- **This metadata/file-existence test does not establish that all audio decodes correctly.** That is the purpose of Stage 3's full audio audit.
+- **The separate Stage 3 full audio audit subsequently decoded all 8,732 recordings successfully (0 invalid).** File-existence and decode checks are separate pieces of evidence.
 
 ### Official label IDs — never alphabetically reindex
 
@@ -131,9 +131,9 @@ python -m pip check
 
 ## 5. Official model source, checkpoint and verification history
 
-**Official implementation:** https://github.com/qiuqiangkong/audioset_tagging_cnn  
+**Official implementation:** <https://github.com/qiuqiangkong/audioset_tagging_cnn>  
 **Locally recorded Git commit:** `d2f4b8c18eab44737fcc0de1248ae21eb43f6aa4`  
-**Published checkpoint archive:** https://zenodo.org/records/3576403  
+**Published checkpoint archive:** <https://zenodo.org/records/3576403>  
 **Original filename:** `checkpoints/Cnn14_mAP=0.431.pth`  
 **Published MD5 and measured local MD5:** `595633ac2d1cac7ef04ebf70e2fee4e4`
 
@@ -165,9 +165,9 @@ The user executed `src/check_cnn14.py` with original trusted checkpoint and safe
 
 A NumPy `VisibleDeprecationWarning` was observed during legacy deserialization, but did not prevent load or inference. The **10-class head is randomly initialized**. The verification proves model integration and tensor shapes, not classification accuracy or successful fine-tuning.
 
-## 6. Stage 3 waveform preprocessing (prepared; local full audit pending)
+## 6. Stage 3 waveform preprocessing (full Windows execution PASS)
 
-The Stage 3 implementation is supplied in `src/dataset.py`, `src/audit_audio.py`, `src/check_dataloader.py`, and `tests/test_dataset.py`.
+The Stage 3 implementation is supplied in `src/dataset.py`, `src/audit_audio.py`, `src/check_dataloader.py`, and `tests/test_dataset.py`. The user ran the full verification on Windows on **23 October 2026**: `results/verification_runs/20261023_011110_002188/summary.json` (13/13 check statuses passing with the open source-isolation warning).
 
 | Property | Implementation |
 | --- | --- |
@@ -187,7 +187,7 @@ The Stage 3 implementation is supplied in `src/dataset.py`, `src/audit_audio.py`
 
 Official CNN14 frontend constructor settings: `sample_rate=32000`, `window_size=1024`, `hop_size=320`, `mel_bins=64`, `fmin=50`, `fmax=14000`. The notebook can visualize log-Mel features, but the model itself takes raw waveforms.
 
-**Important limitation:** center cropping a clip longer than four seconds could discard events at its boundaries. The full audio audit records duration distribution and counts longer-than-4-second clips, so this preprocessing choice should be revisited if the observed distribution makes it problematic.
+**Observed full audio audit:** 8,732/8,732 WAV files decoded, 0 invalid; 11 source sampling rates, 8,000–192,000 Hz; durations min `0.05 s`, median `4.0 s`, mean `3.6075 s`, max `4.03665 s`. **Eight clips exceed 4.001 s.** Center cropping may discard events at boundaries; this is a documented limitation. All 8,732 clips remain in the dataset. The audit generated dataset-statistics reports and figures.
 
 ## 7. Re-run all Stage 2 and Stage 3 checks with one command
 
@@ -253,7 +253,7 @@ Shows the commands it would execute without changing files or running any checks
 
 **Correct execution:** run commands from the project root with the same Python interpreter that reports CUDA support (`python -c "import torch; print(torch.cuda.is_available())"`).
 
-### What constitutes Stage 3 passing?
+### Stage 3 passing criteria (all met locally on 23 October 2026)
 
 - Local unit tests pass.
 - Full audit reports exactly 8,732 **successfully decoded** recordings and **zero** decode/validity errors (`results/dataset_integrity_report.json` has `"full_audio_audit": true`).
@@ -271,6 +271,7 @@ EnvironmentalSoundRecognition/
 ├── requirements.txt                    # Compatibility constraints
 ├── requirements.lock.txt               # Exact versions captured on local PC
 ├── run_all_checks.py                   # One-command Stage 2 + Stage 3 runner
+├── run_stage4_checks.py                 # One-command Stage 4 unit + gradient checker
 ├── check_urbansound8k.py               # Original dataset metadata/path audit
 ├── check_dependencies.py               # Dependency imports and CUDA tensor test
 ├── finalize_requirements.py            # Regenerate local dependency lock
@@ -289,16 +290,22 @@ EnvironmentalSoundRecognition/
 │   ├── check_folds.py                  # Ten-fold and source-ID checks
 │   ├── dataset.py                      # Waveform preprocessing + Dataset/DataLoader
 │   ├── audit_audio.py                  # Full WAV decode audit and figures
-│   └── check_dataloader.py             # Real batch and CNN14 smoke tests
+│   ├── check_dataloader.py             # Real batch and CNN14 smoke tests
+│   ├── finetune_model.py               # Stage 4: strict load + freeze policies
+│   ├── finetune_check.py               # Stage 4: real-gradient/update verification
+│   └── finetune_train.py               # Stage 4: train/validate only
 ├── tests/
-│   └── test_dataset.py                 # Unit tests
+│   ├── test_dataset.py                 # Stage 3 unit tests
+│   ├── test_finetune.py                # Stage 4 freeze/optimizer tests
+│   └── test_finetune_loop.py           # Stage 4 train/validation loop test
 ├── results/
 │   ├── fold_split_summary.csv
 │   ├── cross_fold_source_summary.csv
 │   ├── cross_fold_source_details.csv
 │   ├── dataset_integrity_report.json  # After Stage 3 audit
 │   ├── audio_file_statistics.csv       # After Stage 3 audit
-│   └── verification_runs/              # One log + JSON summary per runner invocation
+│   ├── verification_runs/              # One log + JSON summary per Stage 2/3 run
+│   └── stage4/                         # New training run dirs (after local execution)
 ├── figures/                            # Created by Stage 3 audit
 └── notebooks/                          # Future NEW UrbanSound8K/CNN14 notebook
 ```
@@ -321,13 +328,16 @@ Large raw datasets and pretrained checkpoints need not be placed in the final te
 | 2 | Debugged legacy NumPy pickle under restricted PyTorch loading | **Resolved via trusted one-time load and safe tensor-only export** |
 | 2 | Strict checkpoint load; CPU/GPU synthetic waveform → 2048 embedding → ten logits | **PASS (user console output)** |
 | 2 | Verified all ten 8/1/1 partitions and generated CSV audits | **PASS at clip level; source-overlap WARNING open** |
-| 3 | Implemented Stage 3 dataset/audit/DataLoader scripts and synthetic tests | **Files prepared; synthetic tests passed in development environment** |
-| 3 | Run tests and complete 8,732-file WAV audit on student's PC | **Pending local verification** |
-| 3 | Run real-audio CNN14 forward check on student's PC | **Pending local verification** |
-| 4–9 | Genuine frozen/partial fine-tuning, real scores, CO4/CO5 evaluations | **Not started / no claims of results** |
+| 3 | Implemented Stage 3 dataset/audit/DataLoader scripts and unit tests | **PASS on Windows (4/4 existing unit tests)** |
+| 3 | Full audio decoding and statistics: all 8,732 recordings | **PASS locally; 0 invalid WAVs, 11 sample rates, 8 clips longer than 4.001 s** |
+| 3 | Real-audio CNN14 forward with `[1,10]` output | **PASS locally (untrained head)** |
+| 3 | One-command `python run_all_checks.py` full audit | **13/13 PASS, source-ID caveat remains; run summary at `results/verification_runs/20261023_011110_002188/summary.json`** |
+| 4 | Freeze-policy/optimizer/test-loop implementations | **Prepared; 6 Stage 4 lightweight tests passed in development environment** |
+| 4 | Real CNN14 convolutional backward pass, parameter updates, pilot training | **Awaiting local Windows execution** |
+| 5–9 | Final held-out test evaluation, CO4/CO5 results | **Not started / no claims of results** |
 | 10–11 | Final reproducibility audit and registration-number ZIP | **Pending** |
 
-## 10. Planned training and hyperparameters (not final results)
+## 10. Stage 4 fine-tuning hyperparameters (candidate values; not validated results)
 
 The first candidate configuration is for a **pilot only**, subject to measured VRAM use and validation evidence:
 
@@ -340,14 +350,14 @@ The first candidate configuration is for a **pilot only**, subject to measured V
 | Classifier learning rate | Approximately `1e-3` to begin testing |
 | Unfrozen pretrained-layer learning rate | Approximately `1e-5` to begin testing |
 | Weight decay | Approximately `1e-4` to begin testing |
-| Batch size | Start small due to **4 GiB VRAM**, determine empirically |
-| Epochs | Pilot first; later validation-based early stopping |
+| Batch size | **1** for initial RTX 3050 GPU pilot, with 4-microbatch gradient accumulation; adjust based on measured memory |
+| Epochs | 1-epoch limited-batch smoke test; initial full-fold candidate 6 epochs, patience 2 |
 | Scheduler | Validation-based scheduler if needed; not yet selected |
 | Augmentation | None initially; optional training-only controlled ablation |
 | Dropout | Standard backbone behavior plus any documented head changes; not yet finalized |
-| Frozen layers and BatchNorm | To be verified explicitly; no fine-tuning implemented yet |
+| Frozen layers and BatchNorm | Implemented three modes (`head`, `fc1`, `block6`); freeze all pretrained BN running statistics, even in trainable block6 |
 
-**Hyperparameter tuning:** not performed for this CNN14/UrbanSound8K implementation. The final README must replace these candidate values with the values actually selected on validation folds and cite `results/hyperparameter_results.csv`.
+**Hyperparameter tuning:** not yet performed for this CNN14/UrbanSound8K implementation. Stage 4 uses pilot candidates and logs `config.json` per training run; do not pretend these are optimally tuned. The final README should point to genuine validation-controlled tuning results.
 
 ## 11. Results, CO3, CO4 and CO5 requirements — pending
 
@@ -371,12 +381,73 @@ There are **no UrbanSound8K training accuracies, loss curves, ablation metrics, 
 
 ## 13. References and provenance
 
-- UrbanSound8K official dataset: https://urbansounddataset.weebly.com/urbansound8k.html
-- Official PANNs implementation: https://github.com/qiuqiangkong/audioset_tagging_cnn
-- Official CNN14 checkpoint record: https://zenodo.org/records/3576403
-- PyTorch checkpoint security / `torch.load`: https://docs.pytorch.org/docs/stable/generated/torch.load.html
+- UrbanSound8K official dataset: <https://urbansounddataset.weebly.com/urbansound8k.html>
+- Official PANNs implementation: <https://github.com/qiuqiangkong/audioset_tagging_cnn>
+- Official CNN14 checkpoint record: <https://zenodo.org/records/3576403>
+- PyTorch checkpoint security / `torch.load`: <https://docs.pytorch.org/docs/stable/generated/torch.load.html>
 - Course assignment: `project_submission_instructions` (provided as part of the project context; preserve your original copy outside the submission if needed).
 
 ---
 
-**Next milestone:** Execute `python run_all_checks.py` on the student PC, review the full audio integrity report and unresolved cross-fold source dependencies, then proceed to **Stage 4: genuine partial freezing and CNN14 fine-tuning** only after real-audio inputs pass all required checks.
+**Next milestone:** Run the Stage 4 unit suite and `python -m src.finetune_check --config block6 --device cuda` on the RTX 3050. If gradient/update and frozen-BN checks pass, run short diagnostic training, then genuine full-fold validation-selected experiments. Continue monitoring the source-overlap warning; do not touch test data during model selection.
+
+## 14. Stage 4 — CNN14 fine-tuning (code added 23 October 2026; local execution pending)
+
+**Read `STAGE4_README.md` for complete commands and implementation rationale.** This stage adds `src/finetune_model.py`, `src/finetune_check.py`, `src/finetune_train.py`, `tests/test_finetune.py`, and `tests/test_finetune_loop.py`, and `run_stage4_checks.py`.
+
+**Architecture:** build official CNN14 with its original 527-class classifier, load the verified tensor-only AudioSet checkpoint with `strict=True`, then attach `Linear(2048,10)` to the pretrained embedding. Use raw logits and `CrossEntropyLoss`; do not use the original AudioSet probabilities for the UrbanSound8K loss. The original AudioSet head stays frozen. No other network replaces CNN14.
+
+| Stage 4 configuration | Trainable components | Intended comparison |
+| --- | --- | --- |
+| `head` | New 10-way linear classifier | Frozen-feature baseline |
+| `fc1` | Pretrained `fc1` + new head | Dense-layer fine-tuning baseline |
+| `block6` | Pretrained `conv_block6` + `fc1` + new head | **Genuine partial CNN fine-tuning (main method)** |
+
+All earlier convolutions remain frozen in `block6`; the optimizer receives **only** `requires_grad=True` tensors. All original BatchNorm running means/variances are fixed in evaluation mode, but unfrozen block6 BN affine weights can update. Standard PANNs training-mode SpecAugmentation and dropout remain active only during training; validation uses evaluation mode.
+
+**One-command checker (recommended):**
+
+```bat
+cd /d D:\EnvironmentalSoundRecognition
+python run_stage4_checks.py
+```
+
+This runs all unit tests plus all three single-update checks, stops on failure, and logs under `results/stage4/checks/`. For four-batch diagnostic pilots too, add `--pilots`; for unit tests only, add `--unit-only`. It never evaluates the test fold or starts a full training run.
+
+**Equivalent individual commands:**
+
+```bat
+python -m unittest discover -s tests -v
+python -m src.finetune_check --config head --device cuda
+python -m src.finetune_check --config fc1 --device cuda
+python -m src.finetune_check --config block6 --device cuda
+```
+
+The `finetune_check` commands perform a single real train-fold forward/backward/update; they verify gradient and parameter changes, no frozen-gradient/update leakage, frozen BatchNorm running-stat invariance, output shape `[1,10]` and peak CUDA allocated/reserved memory. **They are not accuracy measurements or a completed training experiment.**
+
+**Diagnostic training (limited batches; do not report as project performance):**
+
+```bat
+python -m src.finetune_train --config head --test-fold 1 --epochs 1 --batch-size 1 --accum-steps 4 --max-train-batches 4 --max-val-batches 4
+python -m src.finetune_train --config block6 --test-fold 1 --epochs 1 --batch-size 1 --accum-steps 4 --max-train-batches 4 --max-val-batches 4
+```
+
+**First genuine full-fold candidate (only after diagnostics pass):**
+
+```bat
+python -m src.finetune_train --config head --test-fold 1 --epochs 6 --patience 2 --batch-size 1 --accum-steps 4
+python -m src.finetune_train --config fc1 --test-fold 1 --epochs 6 --patience 2 --batch-size 1 --accum-steps 4
+python -m src.finetune_train --config block6 --test-fold 1 --epochs 6 --patience 2 --batch-size 1 --accum-steps 4
+```
+
+Each run creates a unique directory under `results/stage4/` with `config.json`, `history.csv`, `learning_curves.png`, `best.pt` (trainable parameters only), and `summary.json`. The best checkpoint is selected exclusively using **validation macro-F1** (tie-break: validation accuracy); the test fold is **never evaluated** in Stage 4. A run with limited train/val batches is marked `diagnostic_only=true`. The saved checkpoint must be combined with the SAME safe AudioSet pretrained backbone to reconstruct the trained classifier. Early stopping is supported.
+
+**Provenance:** Stage 2/3 passed on the student PC; Stage 4 Python code and toy CPU tests were validated in the development environment (six additional tests alongside four Stage 3 tests, ten total), **not yet run locally with real CNN14 gradients**. No training metrics may be claimed until actual local executions are provided.
+
+### Stage 4 limitations and future evidence
+
+With the RTX 3050's 4 GiB VRAM, a genuine `conv_block6` backward pass may exceed memory. Test with batch size 1 first; gradient accumulation changes effective optimizer batch but does not reduce single-microbatch memory. Mixed precision is enabled automatically on CUDA but must be measured and validated.
+
+The Stage 4 training curves compare **online training metrics with training-only SpecAugmentation/dropout** against clean evaluation-mode validation; do not overinterpret a small train–validation gap as a formal bias–variance decomposition.
+
+Stage 5 must evaluate a **validation-selected** checkpoint on untouched test data; Stage 6+ should add the full required metrics, all-fold stability as feasible, published UrbanSound8K comparison, controlled ablation, and submission audit. The five cross-fold `fsID` warnings remain unresolved and must be mentioned alongside benchmark results.

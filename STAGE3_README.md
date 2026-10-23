@@ -8,7 +8,7 @@ This bundle adds files only; it does not overwrite or retrain the existing model
 
 Unzip this archive **inside the project root** `D:\EnvironmentalSoundRecognition`, so it creates:
 
-```
+```text
 src/__init__.py
 src/dataset.py
 src/audit_audio.py
@@ -21,7 +21,7 @@ Your existing `src/check_cnn14.py` and `src/check_folds.py` are not included and
 
 ## Run (from the project root)
 
-```
+```bat
 cd /d D:\EnvironmentalSoundRecognition
 python -m unittest discover -s tests -v
 python -m src.audit_audio --max-files 50
