@@ -616,20 +616,13 @@ CO3 metrics, CO4 citations or CO5 empirical superiority; those remain to be perf
 
 <!-- AUTO_NOTEBOOK_STATUS_START -->
 ### Latest notebook execution
-- Notebook session: `20261023_102843_515965`
+- Notebook session: `20261023_110914_887826`
 - Python: `3.13.15`; PyTorch `2.7.0+cu128`; CUDA available: `True`
 - Local audio metadata available: `True`
 - Tensor-only official CNN14 weights available: `True`
-- Programmatic notebook commands run this session: `4`
+- Programmatic notebook commands run this session: `0`
 - **Historic verified state:** 8,732 WAV files passed the full decode audit; CNN14 and all three one-step gradient/update modes passed on Windows (23 Oct 2026).
 - **Known limitation:** five `fsID` values span official folds; some time intervals overlap.
 - **Open work:** multi-batch pilot, full-fold training, held-out metrics, genuine CO4/CO5 comparison, and final packaging (unless subsequent dated evidence establishes them).
-
-| Notebook step | Exit | Saved log |
-|---|---:|---|
-| pip_requirements_consistency | 0 | `results\notebook_evidence\20261023_102843_515965\pip_requirements_consistency.log` |
-| dependency_import_and_CUDA | 0 | `results\notebook_evidence\20261023_102843_515965\dependency_import_and_CUDA.log` |
-| unit_tests | 0 | `results\notebook_evidence\20261023_102843_515965\unit_tests.log` |
-| stage4_real_backward_checks | 0 | `results\notebook_evidence\20261023_102843_515965\stage4_real_backward_checks.log` |
 - Saved Stage 4 training summaries found: `2` full, `4` diagnostic. These are not held-out test results.
 <!-- AUTO_NOTEBOOK_STATUS_END -->
