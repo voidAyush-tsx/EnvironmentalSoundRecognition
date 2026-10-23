@@ -1,10 +1,63 @@
 # Deep Learning Framework for Environmental Sound Recognition Using PyTorch
 
+
+> **Notebook-first workflow (added 23 October 2026):** Open
+> [`notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb`](notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb)
+> in VS Code/Jupyter and execute its cells. The notebook covers Stage 1–4 from the beginning,
+> separates historical Windows proof from new run outputs, saves every long-running check's complete
+> log to `results/notebook_evidence/`, and displays dataset plots, splits, model status and
+> training histories from real artifacts. **Press Ctrl+S to persist notebook cell outputs.**
+> On **Kernel → Restart & Run All**, expensive model checks and training are **off by default**;
+> enable the corresponding `RUN_...` switches deliberately. The safe cache-cleanup cell and
+> `.gitignore` are provided. **No new model performance has been claimed by creating the notebook.**
+
+
 **Dataset:** UrbanSound8K · **Backbone:** official AudioSet-pretrained PANNs CNN14 · **Framework:** PyTorch  
 **Task:** Single-label classification of ten urban/environmental sound classes  
-**Project status (23 October 2026):** Stage 2 and Stage 3 **PASSED on the student Windows PC** (13/13 full checks; 8,732/8,732 WAV files decoded; CUDA+CPU CNN14 forward); five cross-fold `fsID` source-dependence warnings remain open. Stage 4: **14/14 unit tests PASSED on the PC; BF16 head-only real backward/update PASSED (465.9 MiB peak CUDA allocation); BF16 `fc1` one-step gradient check FAILED (`fc1.weight` norm exactly 0.0) on the first training clip**; `block6` not yet tested. Separate head-only FP32 check PASSED (721.4 MiB allocated). This revision adds a multi-clip gradient diagnostic and gradient-activity logging; its real-CNN14 Windows result is **pending**. No real UrbanSound8K fine-tuning experiment or held-out classification accuracy is complete.
+**Project status (23 October 2026):** Stages 2–3 PASSED on the student Windows PC (13/13 verification checks; all 8,732 WAV files decoded; CUDA and CPU CNN14 forward passes). Stage 4 **verification PASSED** on the RTX 3050: 19/19 unit tests and genuine one-step backward/optimizer updates for `head`, `fc1`, and `block6` under BF16. `conv_block6.conv1.weight` changed by approximately `1.00136e-5` after its optimizer step; frozen parameters and pretrained BatchNorm running statistics were unchanged. **One train-only dog-bark clip still produces zero `fc1` and `conv_block6` gradients;** an air-conditioner clip provided nonzero gradients in all intended layers. Five cross-fold `fsID` warnings remain open. **No multi-batch diagnostic pilot, full-epoch training, validation-selected trained classifier, or held-out UrbanSound8K accuracy has been established yet.**
 
 > This is the living README for the current **UrbanSound8K/PANNs CNN14** project. Earlier ESC-50/SimpleCNN notebook experiments are historical and **must not** be reported as results of this project.
+
+## Current Stage 4 verification evidence — 23 October 2026
+
+**Authoritative evidence:** actual local execution of `python run_stage4_checks.py` on Windows, not a synthetic/model-mock test.
+
+- **Run status:** `PASS` (`results/stage4/checks/20261023_071516_424568/summary.json`).
+- **Unit tests:** 19/19 passed.
+- **Hardware:** NVIDIA GeForce RTX 3050 Laptop GPU, 4.0 GiB VRAM; PyTorch `2.7.0+cu128`; CUDA BF16 autocast.
+- **Model:** Official PANNs CNN14, original AudioSet checkpoint strictly loaded, separate untrained 10-class head; official Git revision `d2f4b8c18eab44737fcc0de1248ae21eb43f6aa4`.
+- **All checks used training-fold waveforms only** for gradients; no held-out test evaluation occurred.
+
+| Freeze configuration | Trainable parameters | Gradient evidence | Actual update evidence | Peak allocated CUDA memory |
+| --- | ---: | --- | --- | ---: |
+| `head` | 20,490 | Head norm `14.2359` | Head max difference `0.001000002` | 465.9 MiB |
+| `fc1` | 4,216,842 | `fc1.weight` norm `0.801676` on training candidate index 18 | `fc1.weight` max difference `1.001358e-5` | 474.0 MiB |
+| `block6` | 60,848,138 | `fc1.weight` norm `0.801676`; `conv_block6.conv1.weight` norm `0.224071` on training candidate index 18 | Both pretrained weight tensors updated, each max difference `1.001358e-5` | 1,257.5 MiB |
+
+**Freeze/BN verification:** The checker confirmed no unintended frozen-parameter gradients or updates and no changes to monitored pretrained BatchNorm running statistics. This demonstrates real partial fine-tuning *capability*, not convergence or model quality. `block6` trains approximately **74.3% of all 81,857,561 parameters**, even though early convolution blocks remain frozen; training cost must be measured and compared honestly.
+
+**Unresolved zero-gradient observation:** Candidate index 0, label `3` (`dog_bark`), had an all-zero input to `fc1` and zero gradients for `fc1.weight` and `conv_block6.conv1.weight`. On candidate index 18, label `0` (`air_conditioner`), the `fc1` input was nonzero and all intended gradients were nonzero. This was observed for both `fc1` and `block6` checks. The numerical result does **not** establish whether the zero feature arose from the frozen pretrained path, training-time augmentation/dropout, or another clip-specific factor. The training loop's gradient-activity counters are intended to monitor this across epochs.
+
+**Next step — limited diagnostic training only:**
+
+```bat
+cd /d D:\EnvironmentalSoundRecognition
+python run_stage4_checks.py --pilots
+```
+
+`--pilots` reruns verification and then trains one epoch using only four training batches and four validation batches each for `head` and `block6`. It explicitly marks these outputs `diagnostic_only=true`; their tiny-subset metrics must NOT be reported as sound-classification performance. Monitor nonzero-gradient optimizer-step counts, memory, and checkpoint round-trip. `fc1` is already one-step verified and should be included in the subsequent full-fold comparison.
+
+**Then, only after pilots pass, matched full-fold training candidates (test fold 1 held aside):**
+
+```bat
+python -m src.finetune_train --config head --test-fold 1 --epochs 6 --patience 2 --batch-size 1 --accum-steps 4
+python -m src.finetune_train --config fc1 --test-fold 1 --epochs 6 --patience 2 --batch-size 1 --accum-steps 4
+python -m src.finetune_train --config block6 --test-fold 1 --epochs 6 --patience 2 --batch-size 1 --accum-steps 4
+```
+
+These are **planned commands**, not executed runs. Preserve their `config.json`, `history.csv`, `learning_curves.png`, `summary.json`, and validation-selected `best.pt`. Complete CO3 evaluation, CO4 verified literature comparison, CO5 controlled accuracy/compute/stability comparison, and the final teacher-specific submission audit are still pending. The five source-ID cross-fold warnings remain unresolved.
+
+---
 
 ## Student and submission details
 
@@ -20,7 +73,7 @@
 The teacher's original initial-evaluation deadline in the supplied assignment was **14 September 2026**; confirm any subsequently revised deadline separately. The final package must include source, reproducibility information, required results, figures, comparisons, ablations, README and requirements. Do not submit a verification-only project as a completed trained system.
 
 
-### Historical Stage 4 numerical-precision correction (23 October 2026; head-only CUDA verification now PASSED)
+### Historical Stage 4 numerical-precision correction (superseded by the successful verification above)
 
 The first actual Windows run of `python run_stage4_checks.py` passed all **10 original Stage 3/4 unit tests**, then stopped at the `head` one-step CUDA check:
 
@@ -47,16 +100,16 @@ Optional one-step full-precision diagnostic when BF16 fails:
 python -m src.finetune_check --config head --device cuda --amp off
 ```
 
-Then, only if head/fc1/block6 one-step checks pass, run diagnostic pilots (four train/validation batches only). **The latest student run has NOT reached this prerequisite:**
+Then, only if head/fc1/block6 one-step checks pass, run diagnostic pilots (four train/validation batches only). **At the time of that earlier run, this prerequisite had not been reached; the later verification above has now PASSED.**
 
 ```bat
 python run_stage4_checks.py --pilots
 ```
 
-**Verified in this assistant's CPU environment:** 19/19 combined unit tests including this diagnostic patch, syntax validation. **Not verified here:** real CNN14 `fc1`/`block6` nonzero gradients on your GPU, successful end-to-end Stage 4, pilots, full epochs, or classification accuracy; user did verify BF16 head-only update and memory as documented above. Update this record with the real Windows result; do not claim a successful Stage 4 run based on the local unit tests alone.
+**Historical validation note:** The earlier patch passed 19/19 lightweight unit tests in the development environment; at that point, genuine CNN14 pretrained-layer gradients on Windows were unverified. Those gradients and parameter updates have now been verified by the user's RTX 3050 run, as shown in the current evidence section. Multi-batch pilots, full epochs and classification accuracy remain pending.
 
 
-## 2026-10-23 — Stage 4 single-clip zero-gradient investigation (current)
+## 2026-10-23 — Earlier Stage 4 single-clip zero-gradient investigation (historical record)
 
 The user's **actual Windows output** after the BF16 precision fix was:
 
@@ -71,14 +124,14 @@ The user's **actual Windows output** after the BF16 precision fix was:
 
 The official `Cnn14.forward` applies `F.relu_` to `fc1` before emitting its embedding. Thus a single clip's `fc1.weight` gradient can be zero when its pooled input features vanish, even if the head receives a nonzero gradient from activated pretrained `fc1` biases. Other possible explanations include mixed-precision behavior and training-time dropout/SpecAugmentation. **These are hypotheses; the exact real-data cause is not yet determined.** Changing learning rates or disabling the gradient assertion would not be a legitimate fix.
 
-### Diagnostic patch included in this revision
+### Diagnostic patch introduced in that revision
 
 - `src/gradient_audit.py`: reports activation statistics and gradient states, without treating zero gradients as success.
 - `src/finetune_check.py`: tests the first training clip and up to 11 additional deterministically selected **training-only** clips (including one representative per class), reports both `fc1` input and pre-ReLU activation statistics, and performs exactly **one** optimizer update **only if** all relevant trainable weight tensors have nonzero finite gradients. If zero-gradient cases occurred before a successful candidate, they remain explicit warnings. If none work, no optimizer update occurs and Stage 4 remains blocked.
 - `src/finetune_train.py`: logs how many accumulated optimizer steps have nonzero classifier / `fc1` / `conv_block6.conv1` gradients, and rejects an epoch where an intended layer received none. The training fold is used for gradients; validation still determines checkpoint selection; the held-out test fold is not scored.
 - `tests/test_gradient_audit.py`: regression tests for candidate selection and for the mathematically possible combination *nonzero head gradient, zero `fc1.weight` gradient*.
 
-**Run after installing this patch:**
+**Historical command used to verify that patch:**
 
 ```bat
 cd /d D:\EnvironmentalSoundRecognition
@@ -92,7 +145,7 @@ python -m src.finetune_check --config fc1 --device cuda --amp off --max-candidat
 python -m src.finetune_check --config fc1 --device cuda --amp auto --feature-mode eval --max-candidates 12
 ```
 
-`--feature-mode eval` is **diagnostic only**: it disables the official pretrained backbone's *training-time SpecAugmentation and dropout* while retaining gradients for the selected trainable layers. Do not compare its results with normal train-mode runs as though their conditions were identical. Only continue to diagnostic pilots after **all three** real-gradient checks pass. Neither this patch nor its tests establish that the user's CNN14 pretrained convolutional gradients are now nonzero; only execution on the 4 GiB RTX 3050 can do that.
+`--feature-mode eval` is **diagnostic only**: it disables the official pretrained backbone's *training-time SpecAugmentation and dropout* while retaining gradients for the selected trainable layers. Do not compare its results with normal train-mode runs as though their conditions were identical. Those prerequisites were subsequently met by the successful Windows run documented in the current evidence section. The original patch by itself did not establish that result.
 
 ## 1. Project objective
 
@@ -104,7 +157,7 @@ Planned transfer-learning experiments:
 2. **Partial fine-tuning:** freeze early feature-extraction layers; train selected later layers and the classifier, with appropriate BatchNorm handling and lower learning rates on pretrained weights.
 3. **Optional full fine-tuning:** only if GPU memory permits; use the same folds and processing when comparing approaches.
 
-These are **planned experiments**, not completed results. We will use `CrossEntropyLoss` on ten logits and evaluate unseen folds using the teacher-required metrics. No architecture will be substituted for CNN14.
+The **one-step training checks** are completed, but the multi-epoch **experimental comparisons** have not yet been run. We will use `CrossEntropyLoss` on ten logits and evaluate unseen folds using the teacher-required metrics. No architecture will be substituted for CNN14.
 
 ## 2. Dataset and label mapping
 
@@ -408,7 +461,8 @@ Large raw datasets and pretrained checkpoints need not be placed in the final te
 | 3 | Real-audio CNN14 forward with `[1,10]` output | **PASS locally (untrained head)** |
 | 3 | One-command `python run_all_checks.py` full audit | **13/13 PASS, source-ID caveat remains; run summary at `results/verification_runs/20261023_011110_002188/summary.json`** |
 | 4 | Freeze-policy/optimizer/test-loop implementations | **Prepared; 6 Stage 4 lightweight tests passed in development environment** |
-| 4 | Real CNN14 convolutional backward pass, parameter updates, pilot training | **Awaiting local Windows execution** |
+| 4 | Real CNN14 convolutional backward pass and parameter updates | **PASS on Windows (head/fc1/block6; see current Stage 4 evidence)** |
+| 4 | Multi-batch diagnostic pilots and full-fold training | **Pending** |
 | 5–9 | Final held-out test evaluation, CO4/CO5 results | **Not started / no claims of results** |
 | 10–11 | Final reproducibility audit and registration-number ZIP | **Pending** |
 
@@ -464,10 +518,10 @@ There are **no UrbanSound8K training accuracies, loss curves, ablation metrics, 
 
 ---
 
-**Next milestone:** Run the Stage 4 unit suite and `python -m src.finetune_check --config block6 --device cuda` on the RTX 3050. If gradient/update and frozen-BN checks pass, run short diagnostic training, then genuine full-fold validation-selected experiments. Continue monitoring the source-overlap warning; do not touch test data during model selection.
+**Next milestone:** Stage 4 real gradient checks have PASSED on the RTX 3050. Run short diagnostic training, then matched full-fold validation-selected experiments. Continue monitoring the source-overlap warning; do not touch test data during model selection.
 
 
-## 14. Stage 4 — CNN14 fine-tuning (code added 23 October 2026; local execution pending)
+## 14. Stage 4 — CNN14 fine-tuning (implementation details; one-step checks PASSED, full training pending)
 
 **Read `STAGE4_README.md` for complete commands and implementation rationale.** This stage adds `src/finetune_model.py`, `src/finetune_check.py`, `src/finetune_train.py`, `tests/test_finetune.py`, and `tests/test_finetune_loop.py`, and `run_stage4_checks.py`.
 
@@ -518,12 +572,64 @@ python -m src.finetune_train --config block6 --test-fold 1 --epochs 6 --patience
 
 Each run creates a unique directory under `results/stage4/` with `config.json`, `history.csv`, `learning_curves.png`, `best.pt` (trainable parameters only), and `summary.json`. The best checkpoint is selected exclusively using **validation macro-F1** (tie-break: validation accuracy); the test fold is **never evaluated** in Stage 4. A run with limited train/val batches is marked `diagnostic_only=true`. The saved checkpoint must be combined with the SAME safe AudioSet pretrained backbone to reconstruct the trained classifier. Early stopping is supported.
 
-**Provenance:** Stage 2/3 passed on the student PC; Stage 4 Python code and toy CPU tests were validated in the development environment (six additional tests alongside four Stage 3 tests, ten total), **not yet run locally with real CNN14 gradients**. No training metrics may be claimed until actual local executions are provided.
+**Provenance:** Stage 2/3 passed on the student PC. Stage 4 one-step real CNN14 gradients/weight updates passed locally on 23 October 2026 (19/19 tests; `head`, `fc1`, `block6`). No multi-batch training results or evaluation metrics may be claimed until actual training/evaluation executions are provided.
 
 ### Stage 4 limitations and future evidence
 
-With the RTX 3050's 4 GiB VRAM, a genuine `conv_block6` backward pass may exceed memory. Test with batch size 1 first; gradient accumulation changes effective optimizer batch but does not reduce single-microbatch memory. Mixed precision is enabled automatically on CUDA but must be measured and validated.
+The actual RTX 3050 `conv_block6` backward/update check succeeded at batch size 1 (1,257.5 MiB peak allocated); full-epoch memory, throughput and convergence remain unverified. Gradient accumulation changes effective optimizer batch but does not reduce single-microbatch memory. The successful check used BF16; record memory and numerical stability again in the longer pilots.
 
 The Stage 4 training curves compare **online training metrics with training-only SpecAugmentation/dropout** against clean evaluation-mode validation; do not overinterpret a small train–validation gap as a formal bias–variance decomposition.
 
 Stage 5 must evaluate a **validation-selected** checkpoint on untouched test data; Stage 6+ should add the full required metrics, all-fold stability as feasible, published UrbanSound8K comparison, controlled ablation, and submission audit. The five cross-fold `fsID` warnings remain unresolved and must be mentioned alongside benchmark results.
+
+
+## Notebook workflow: saving evidence and repeating experiments
+
+
+The primary current notebook is `notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb`.
+Start VS Code from `D:\EnvironmentalSoundRecognition`, open that file, select the same
+Python 3.13 kernel where `torch==2.7.0+cu128` works, then **run notebook cells**.
+The notebook imports `src.dataset`, `src.finetune_model` and `src.finetune_train` rather than
+maintaining a conflicting second implementation. Long verification/training commands run
+through a logging helper **inside notebook cells**, so no terminal work is required.
+
+Save the notebook (Ctrl+S) after important cells; `.ipynb` saves displayed tables/figures/outputs.
+Every explicitly launched check also writes complete `.log` output and a `steps.json` manifest
+to a date-stamped `results/notebook_evidence/<run_id>/`. The original Stage 2/3 and Stage 4
+verification directories remain unchanged. Training runs save unique `config.json`, `history.csv`,
+`learning_curves.png`, validation-selected `best.pt`, `summary.json`; pilot results are marked
+`diagnostic_only=true` and never used as final evidence. The notebook's status cell updates
+only a marker-delimited section of README to preserve the earlier diary. **Committing this README
+and the saved notebook to Git** records progress between PC restarts; local `results/` and WAV/
+checkpoint assets are excluded through `.gitignore` by default.
+
+A cache-cleanup cell can optionally remove the project's Python `__pycache__` and `.pyc` files.
+It never touches datasets, checkpoints, results, notebooks or the official source tree.
+To execute from the beginning, choose **Kernel → Restart & Run All** after reviewing the opt-in
+flags. Clearing Python caches is optional, not a substitute for rerunning training.
+
+**Submission requirements:** the original teacher document mandates README, versioned
+requirements, source, evidence for CO3/CO4/CO5, and `RegistrationNumber.zip` (using the actual
+registration number). Do not confuse this newly documented Stage 1–4 notebook with completed
+CO3 metrics, CO4 citations or CO5 empirical superiority; those remain to be performed.
+
+
+<!-- AUTO_NOTEBOOK_STATUS_START -->
+### Latest notebook execution
+- Notebook session: `20261023_102843_515965`
+- Python: `3.13.15`; PyTorch `2.7.0+cu128`; CUDA available: `True`
+- Local audio metadata available: `True`
+- Tensor-only official CNN14 weights available: `True`
+- Programmatic notebook commands run this session: `4`
+- **Historic verified state:** 8,732 WAV files passed the full decode audit; CNN14 and all three one-step gradient/update modes passed on Windows (23 Oct 2026).
+- **Known limitation:** five `fsID` values span official folds; some time intervals overlap.
+- **Open work:** multi-batch pilot, full-fold training, held-out metrics, genuine CO4/CO5 comparison, and final packaging (unless subsequent dated evidence establishes them).
+
+| Notebook step | Exit | Saved log |
+|---|---:|---|
+| pip_requirements_consistency | 0 | `results\notebook_evidence\20261023_102843_515965\pip_requirements_consistency.log` |
+| dependency_import_and_CUDA | 0 | `results\notebook_evidence\20261023_102843_515965\dependency_import_and_CUDA.log` |
+| unit_tests | 0 | `results\notebook_evidence\20261023_102843_515965\unit_tests.log` |
+| stage4_real_backward_checks | 0 | `results\notebook_evidence\20261023_102843_515965\stage4_real_backward_checks.log` |
+- Saved Stage 4 training summaries found: `2` full, `4` diagnostic. These are not held-out test results.
+<!-- AUTO_NOTEBOOK_STATUS_END -->

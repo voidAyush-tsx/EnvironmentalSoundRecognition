@@ -1,0 +1,44 @@
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter cache/autosave metadata (KEEP real .ipynb files tracked)
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+.jupyter/
+
+# Virtual environments and OS / IDE noise
+.venv/
+venv/
+env/
+.vscode/.ropeproject/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# Local data and large pretrained/fine-tuned weights
+/data/
+/checkpoints/
+/external/audioset_tagging_cnn/
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+
+# Regenerable run outputs; notebooks/README are tracked instead
+/results/
+
+# Local packaged archives
+*.zip
+*.tar
+*.tar.gz
+
+# Keep source, requirements, README, tests, notebook and smaller figures.
+# Track actual results selectively only after checking size/privacy.
