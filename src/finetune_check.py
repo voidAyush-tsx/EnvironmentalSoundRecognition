@@ -14,6 +14,8 @@ from torch.nn.modules.batchnorm import _BatchNorm
 
 from .dataset import load_metadata, split_metadata, UrbanSound8KDataset
 from .finetune_model import load_model, parameter_summary, optimizer_for_model, CONFIGS
+from .precision_policy import AMP_CHOICES, choose_precision, autocast_context, assert_finite_logits
+from .gradient_audit import candidate_indices, gradient_measure, feature_statistics
 
 
 def choose_device(value: str) -> torch.device:
@@ -29,7 +31,12 @@ def main():
     parser.add_argument("--config", choices=CONFIGS, default="block6")
     parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--test-fold", type=int, default=1)
-    parser.add_argument("--amp", choices=("auto", "on", "off"), default="auto")
+    parser.add_argument("--amp", choices=AMP_CHOICES, default="auto",
+                        help="auto: CUDA BF16 if supported, otherwise FP32; on/bf16: require BF16; off: FP32")
+    parser.add_argument("--max-candidates", type=int, default=12,
+                        help="Probe this many deterministic TRAIN-only clips before concluding gradients stay zero; 1 reproduces old check")
+    parser.add_argument("--feature-mode", choices=("train", "eval"), default="train",
+                        help="Diagnostic: train=current original PANNs training behavior; eval=disable pretrained SpecAug/dropout, while preserving gradients")
     args = parser.parse_args()
     random.seed(67)
     np.random.seed(67)
@@ -37,14 +44,13 @@ def main():
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(67)
     device = choose_device(args.device)
-    amp = (device.type == "cuda") if args.amp == "auto" else (args.amp == "on")
-    if amp and device.type != "cuda":
-        parser.error("AMP on is supported only with CUDA in this pilot")
-    print(f"Device={device}, config={args.config}, AMP={amp}", flush=True)
+    precision = choose_precision(device, args.amp)
+    print(f"Device={device}, config={args.config}, precision={precision} (requested={args.amp})", flush=True)
     metadata = load_metadata()
     train_df, val_df, test_df = split_metadata(metadata, args.test_fold)
-    waveform, class_id = UrbanSound8KDataset(train_df)[0]  # ONLY training fold
-    print(f"Train-only input [1,{waveform.numel()}], classID={class_id}; validation/test untouched", flush=True)
+    dataset = UrbanSound8KDataset(train_df)
+    indices = candidate_indices(train_df, args.max_candidates)
+    print(f"Probing {len(indices)} deterministic training-only clips; validation/test untouched", flush=True)
 
     model = load_model(config=args.config).to(device)
     info = parameter_summary(model)
@@ -52,6 +58,11 @@ def main():
     print("Trainable prefixes:", sorted({".".join(n.split(".")[:2])
                                        for n, p in model.named_parameters() if p.requires_grad}), flush=True)
     model.train()
+    if args.feature_mode == "eval":
+        # Diagnostic contrast ONLY: official eval-mode disables its internal
+        # SpecAugment and dropout, but DOES NOT disable gradient computation.
+        model.backbone.eval()
+    print("Backbone feature mode:", "train (SpecAug/dropout enabled)" if model.backbone.training else "eval (SpecAug/dropout disabled)", flush=True)
     bn0 = model.backbone.bn0
     bn_before = {
         name: (module.running_mean.detach().cpu().clone(),
@@ -70,36 +81,82 @@ def main():
     assert not model.backbone.conv_block6.bn2.training
 
     optimizer = optimizer_for_model(model)
-    scaler = torch.amp.GradScaler("cuda", enabled=amp)
-    optimizer.zero_grad(set_to_none=True)
-    waves = waveform.unsqueeze(0).to(device)
-    labels = torch.tensor([class_id], dtype=torch.long, device=device)
+    scaler = torch.amp.GradScaler("cuda", enabled=False)  # BF16/FP32 do not need scaling
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
-    with torch.autocast("cuda", dtype=torch.float16, enabled=amp):
-        logits = model(waves)
-        assert logits.shape == (1, 10)
-        assert torch.isfinite(logits).all(), "Nonfinite logits"
-        loss = nn.functional.cross_entropy(logits, labels)
-    scaler.scale(loss).backward()
-    scaler.unscale_(optimizer)
-    for name, p in model.named_parameters():
-        if not p.requires_grad:
-            assert p.grad is None, f"Frozen parameter has gradient: {name}"
+    # Observe activations at fc1; report the cause of zero weight gradients.
+    observed = {}
+    def fc1_input_hook(module, args):
+        observed["fc1_input"] = feature_statistics(args[0])
+    def fc1_output_hook(module, args, output):
+        # The official backbone applies an inplace ReLU AFTER fc1.
+        observed["fc1_pre_relu"] = feature_statistics(output)
+    in_hook = model.backbone.fc1.register_forward_pre_hook(fc1_input_hook)
+    out_hook = model.backbone.fc1.register_forward_hook(fc1_output_hook)
+    chosen = None
     grad_summary = {}
-    for prefix, parameter in (
-        ("head", model.classifier.weight),
-        ("fc1", model.backbone.fc1.weight),
-        ("conv6", model.backbone.conv_block6.conv1.weight),
-    ):
-        if parameter.requires_grad:
-            assert parameter.grad is not None, f"Missing gradient for {prefix}"
-            norm = float(parameter.grad.float().norm().item())
-            if not math.isfinite(norm) or norm <= 0:
-                raise AssertionError(f"Invalid/zero gradient for {prefix}: {norm}")
-            grad_summary[prefix] = norm
-    print("Gradient norms:", grad_summary, flush=True)
-    nn.utils.clip_grad_norm_((p for p in model.parameters() if p.requires_grad), 1.0)
+    failed_cases = []
+    try:
+        for attempt, index in enumerate(indices, 1):
+            waveform, class_id = dataset[index]  # NEVER validation/test
+            optimizer.zero_grad(set_to_none=True)
+            observed.clear()
+            waves = waveform.unsqueeze(0).to(device)
+            labels = torch.tensor([class_id], dtype=torch.long, device=device)
+            if not torch.isfinite(waves).all():
+                raise FloatingPointError(f"Nonfinite training waveform at index {index}")
+            with autocast_context(device, precision):
+                logits = model(waves)
+                assert logits.shape == (1, 10)
+                assert_finite_logits(logits, phase=f"single-step candidate {index}")
+                loss = nn.functional.cross_entropy(logits.float(), labels)
+            if not torch.isfinite(loss):
+                raise FloatingPointError(f"Nonfinite training loss at index {index}")
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            for name, p in model.named_parameters():
+                if not p.requires_grad:
+                    assert p.grad is None, f"Frozen parameter has gradient: {name}"
+            grad_summary = {}
+            zero_parts = []
+            for prefix, parameter in (
+                ("head", model.classifier.weight),
+                ("fc1", model.backbone.fc1.weight),
+                ("conv6", model.backbone.conv_block6.conv1.weight),
+            ):
+                if parameter.requires_grad:
+                    state, norm = gradient_measure(parameter)
+                    if state in ("missing", "nonfinite"):
+                        raise AssertionError(f"Invalid gradient for {prefix} (candidate={index}): {state}")
+                    grad_summary[prefix] = norm
+                    if state == "zero":
+                        zero_parts.append(prefix)
+            print(f"Candidate {attempt}/{len(indices)}: train-index={index}, classID={class_id}, "
+                  f"peak={float(waves.abs().max()):.5f}; gradient norms={grad_summary}", flush=True)
+            print("  fc1 input:", observed.get("fc1_input"), flush=True)
+            print("  fc1 before ReLU:", observed.get("fc1_pre_relu"), flush=True)
+            if zero_parts:
+                print("  ZERO GRADIENT:", ", ".join(zero_parts), "— no optimizer update for this candidate", flush=True)
+                failed_cases.append({"train_index": index, "class_id": class_id,
+                                     "zero_gradients": zero_parts, "features": dict(observed)})
+                continue
+            chosen = (index, class_id)
+            break
+    finally:
+        in_hook.remove()
+        out_hook.remove()
+    if chosen is None:
+        raise RuntimeError(
+            f"None of {len(indices)} training-only clips produced nonzero gradients for all "
+            f"required layers ({args.config}). No optimizer step was applied. "
+            "Compare --amp off and --feature-mode eval to distinguish precision "
+            "from activation/dropout effects. Do not train yet."
+        )
+    if failed_cases:
+        print(f"WARNING: {len(failed_cases)} candidate(s) produced zero gradients. "
+              "This must be documented; passing on another clip does not clear that concern.", flush=True)
+    print("SELECTED informative train-only candidate:", chosen, "Gradient norms:", grad_summary, flush=True)
+    nn.utils.clip_grad_norm_((p for p in model.parameters() if p.requires_grad), 1.0, error_if_nonfinite=True)
     scaler.step(optimizer)
     scaler.update()
     for name, module in model.backbone.named_modules():

@@ -1,0 +1,75 @@
+{
+  "status": "PASS",
+  "device": "cuda",
+  "amp_requested": "auto",
+  "pilot_diagnostic_only": false,
+  "conv6_gradient_check_executed": true,
+  "steps": [
+    {
+      "name": "Stage 3 and Stage 4 unit tests",
+      "command": [
+        "C:\\Program Files\\Python313\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "One backward/update with head",
+      "command": [
+        "C:\\Program Files\\Python313\\python.exe",
+        "-m",
+        "src.finetune_check",
+        "--config",
+        "head",
+        "--device",
+        "cuda",
+        "--amp",
+        "auto",
+        "--max-candidates",
+        "12"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "One backward/update with fc1",
+      "command": [
+        "C:\\Program Files\\Python313\\python.exe",
+        "-m",
+        "src.finetune_check",
+        "--config",
+        "fc1",
+        "--device",
+        "cuda",
+        "--amp",
+        "auto",
+        "--max-candidates",
+        "12"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "One backward/update with block6",
+      "command": [
+        "C:\\Program Files\\Python313\\python.exe",
+        "-m",
+        "src.finetune_check",
+        "--config",
+        "block6",
+        "--device",
+        "cuda",
+        "--amp",
+        "auto",
+        "--max-candidates",
+        "12"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "logs": "D:\\EnvironmentalSoundRecognition\\results\\stage4\\checks\\20261023_071516_424568\\console.log",
+  "note": "This verifies implementation, not trained test accuracy; test fold never evaluated"
+}

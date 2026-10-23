@@ -1,0 +1,104 @@
+Stage 4 verification; device=cuda; precision request=auto; pilots=False
+
+======================================================================
+01. Stage 3 and Stage 4 unit tests
+COMMAND: "C:\Program Files\Python313\python.exe" -m unittest discover -s tests -v
+======================================================================
+test_center_crop_is_deterministic (test_dataset.WaveformTests.test_center_crop_is_deterministic) ... ok
+test_dataset_returns_float_waveform_and_official_label (test_dataset.WaveformTests.test_dataset_returns_float_waveform_and_official_label) ... ok
+test_splits_are_disjoint (test_dataset.WaveformTests.test_splits_are_disjoint) ... ok
+test_stereo_resampling_and_padding (test_dataset.WaveformTests.test_stereo_resampling_and_padding) ... ok
+test_fc1_only (test_finetune.FreezePolicyTests.test_fc1_only) ... ok
+test_head_only (test_finetune.FreezePolicyTests.test_head_only) ... ok
+test_later_conv_trainable_bn_stats_frozen (test_finetune.FreezePolicyTests.test_later_conv_trainable_bn_stats_frozen) ... ok
+test_optimizer_exact_parameter_selection (test_finetune.FreezePolicyTests.test_optimizer_exact_parameter_selection) ... ok
+test_trainable_checkpoint_roundtrip (test_finetune.FreezePolicyTests.test_trainable_checkpoint_roundtrip) ... ok
+test_train_and_validate_with_accumulation (test_finetune_loop.LoopTests.test_train_and_validate_with_accumulation) ... ok
+test_deterministic_training_only_indices (test_gradient_audit.GradientAuditTests.test_deterministic_training_only_indices) ... ok
+test_normal_nonzero_fc1_gradient (test_gradient_audit.GradientAuditTests.test_normal_nonzero_fc1_gradient) ... ok
+test_positive_head_grad_but_zero_fc1_weight_grad_when_input_zero (test_gradient_audit.GradientAuditTests.test_positive_head_grad_but_zero_fc1_weight_grad_when_input_zero) ... ok
+test_reject_empty_candidate_count (test_gradient_audit.GradientAuditTests.test_reject_empty_candidate_count) ... ok
+test_train_epoch_rejects_inactive_pretrained_fc1 (test_gradient_audit.GradientAuditTests.test_train_epoch_rejects_inactive_pretrained_fc1) ... ok
+test_cpu_fallback (test_precision_policy.PrecisionTests.test_cpu_fallback) ... ok
+test_cpu_noop_autocast_and_nonfinite (test_precision_policy.PrecisionTests.test_cpu_noop_autocast_and_nonfinite) ... ok
+test_cuda_bfloat16_selection (test_precision_policy.PrecisionTests.test_cuda_bfloat16_selection) ... ok
+test_unsupported_cuda_never_enables_fp16 (test_precision_policy.PrecisionTests.test_unsupported_cuda_never_enables_fp16) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 3.072s
+
+OK
+RESULT: PASS: Stage 3 and Stage 4 unit tests
+
+======================================================================
+02. One backward/update with head
+COMMAND: "C:\Program Files\Python313\python.exe" -m src.finetune_check --config head --device cuda --amp auto --max-candidates 12
+======================================================================
+Device=cuda, config=head, precision=bf16 (requested=auto)
+Probing 12 deterministic training-only clips; validation/test untouched
+Parameter counts: {'total': 81857561, 'trainable': 20490, 'frozen': 81837071}
+Trainable prefixes: ['classifier.bias', 'classifier.weight']
+Backbone feature mode: train (SpecAug/dropout enabled)
+Candidate 1/12: train-index=0, classID=3, peak=0.99725; gradient norms={'head': 14.23592472076416}
+  fc1 input: {'max_abs': 0.0, 'rms': 0.0, 'nonzero_fraction': 0.0, 'positive_fraction': 0.0, 'finite': 1.0}
+  fc1 before ReLU: {'max_abs': 1.953125, 'rms': 0.32683035731315613, 'nonzero_fraction': 1.0, 'positive_fraction': 0.30078125, 'finite': 1.0}
+SELECTED informative train-only candidate: (0, 3) Gradient norms: {'head': 14.23592472076416}
+New head update max absolute difference: 0.0010000020265579224
+Frozen parameter gradient/update and BatchNorm running-stats checks: PASS
+Peak CUDA allocated MiB: 465.9
+Peak CUDA reserved MiB: 596.0
+STAGE 4 ONE-STEP BACKWARD/UPDATE CHECK: PASS. This is NOT a trained model or evaluation.
+RESULT: PASS: One backward/update with head
+
+======================================================================
+03. One backward/update with fc1
+COMMAND: "C:\Program Files\Python313\python.exe" -m src.finetune_check --config fc1 --device cuda --amp auto --max-candidates 12
+======================================================================
+Device=cuda, config=fc1, precision=bf16 (requested=auto)
+Probing 12 deterministic training-only clips; validation/test untouched
+Parameter counts: {'total': 81857561, 'trainable': 4216842, 'frozen': 77640719}
+Trainable prefixes: ['backbone.fc1', 'classifier.bias', 'classifier.weight']
+Backbone feature mode: train (SpecAug/dropout enabled)
+Candidate 1/12: train-index=0, classID=3, peak=0.99725; gradient norms={'head': 14.23592472076416, 'fc1': 0.0}
+  fc1 input: {'max_abs': 0.0, 'rms': 0.0, 'nonzero_fraction': 0.0, 'positive_fraction': 0.0, 'finite': 1.0}
+  fc1 before ReLU: {'max_abs': 1.953125, 'rms': 0.32683035731315613, 'nonzero_fraction': 1.0, 'positive_fraction': 0.30078125, 'finite': 1.0}
+  ZERO GRADIENT: fc1 — no optimizer update for this candidate
+Candidate 2/12: train-index=18, classID=0, peak=0.75465; gradient norms={'head': 16.856613159179688, 'fc1': 0.8016764521598816}
+  fc1 input: {'max_abs': 0.62109375, 'rms': 0.05830112099647522, 'nonzero_fraction': 0.08056640625, 'positive_fraction': 0.08056640625, 'finite': 1.0}
+  fc1 before ReLU: {'max_abs': 3.640625, 'rms': 0.6859725713729858, 'nonzero_fraction': 1.0, 'positive_fraction': 0.1474609375, 'finite': 1.0}
+WARNING: 1 candidate(s) produced zero gradients. This must be documented; passing on another clip does not clear that concern.
+SELECTED informative train-only candidate: (18, 0) Gradient norms: {'head': 16.856613159179688, 'fc1': 0.8016764521598816}
+fc1 update max absolute difference: 1.0013580322265625e-05
+New head update max absolute difference: 0.0010000020265579224
+Frozen parameter gradient/update and BatchNorm running-stats checks: PASS
+Peak CUDA allocated MiB: 474.0
+Peak CUDA reserved MiB: 596.0
+STAGE 4 ONE-STEP BACKWARD/UPDATE CHECK: PASS. This is NOT a trained model or evaluation.
+RESULT: PASS: One backward/update with fc1
+
+======================================================================
+04. One backward/update with block6
+COMMAND: "C:\Program Files\Python313\python.exe" -m src.finetune_check --config block6 --device cuda --amp auto --max-candidates 12
+======================================================================
+Device=cuda, config=block6, precision=bf16 (requested=auto)
+Probing 12 deterministic training-only clips; validation/test untouched
+Parameter counts: {'total': 81857561, 'trainable': 60848138, 'frozen': 21009423}
+Trainable prefixes: ['backbone.conv_block6', 'backbone.fc1', 'classifier.bias', 'classifier.weight']
+Backbone feature mode: train (SpecAug/dropout enabled)
+Candidate 1/12: train-index=0, classID=3, peak=0.99725; gradient norms={'head': 14.23592472076416, 'fc1': 0.0, 'conv6': 0.0}
+  fc1 input: {'max_abs': 0.0, 'rms': 0.0, 'nonzero_fraction': 0.0, 'positive_fraction': 0.0, 'finite': 1.0}
+  fc1 before ReLU: {'max_abs': 1.953125, 'rms': 0.32683035731315613, 'nonzero_fraction': 1.0, 'positive_fraction': 0.30078125, 'finite': 1.0}
+  ZERO GRADIENT: fc1, conv6 — no optimizer update for this candidate
+Candidate 2/12: train-index=18, classID=0, peak=0.75465; gradient norms={'head': 16.856613159179688, 'fc1': 0.8016764521598816, 'conv6': 0.22407059371471405}
+  fc1 input: {'max_abs': 0.62109375, 'rms': 0.05830112099647522, 'nonzero_fraction': 0.08056640625, 'positive_fraction': 0.08056640625, 'finite': 1.0}
+  fc1 before ReLU: {'max_abs': 3.640625, 'rms': 0.6859725713729858, 'nonzero_fraction': 1.0, 'positive_fraction': 0.1474609375, 'finite': 1.0}
+WARNING: 1 candidate(s) produced zero gradients. This must be documented; passing on another clip does not clear that concern.
+SELECTED informative train-only candidate: (18, 0) Gradient norms: {'head': 16.856613159179688, 'fc1': 0.8016764521598816, 'conv6': 0.22407059371471405}
+fc1 update max absolute difference: 1.0013580322265625e-05
+conv_block6 CONVOLUTION update max absolute difference: 1.0013580322265625e-05
+New head update max absolute difference: 0.0010000020265579224
+Frozen parameter gradient/update and BatchNorm running-stats checks: PASS
+Peak CUDA allocated MiB: 1257.5
+Peak CUDA reserved MiB: 1318.0
+STAGE 4 ONE-STEP BACKWARD/UPDATE CHECK: PASS. This is NOT a trained model or evaluation.
+RESULT: PASS: One backward/update with block6

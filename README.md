@@ -2,7 +2,7 @@
 
 **Dataset:** UrbanSound8K · **Backbone:** official AudioSet-pretrained PANNs CNN14 · **Framework:** PyTorch  
 **Task:** Single-label classification of ten urban/environmental sound classes  
-**Project status (23 October 2026):** **Stage 2 and Stage 3 verification complete on the local Windows PC** (13/13 full-run checks, 8,732/8,732 WAV decodes, 0 invalid, real-audio CNN14 forward). Stage 4 fine-tuning **implemented in code and awaiting local gradient/training execution**. Source-ID overlap warning remains open. No UrbanSound8K training/evaluation metrics are yet available.
+**Project status (23 October 2026):** Stage 2 and Stage 3 **PASSED on the student Windows PC** (13/13 full checks; 8,732/8,732 WAV files decoded; CUDA+CPU CNN14 forward); five cross-fold `fsID` source-dependence warnings remain open. Stage 4: **14/14 unit tests PASSED on the PC; BF16 head-only real backward/update PASSED (465.9 MiB peak CUDA allocation); BF16 `fc1` one-step gradient check FAILED (`fc1.weight` norm exactly 0.0) on the first training clip**; `block6` not yet tested. Separate head-only FP32 check PASSED (721.4 MiB allocated). This revision adds a multi-clip gradient diagnostic and gradient-activity logging; its real-CNN14 Windows result is **pending**. No real UrbanSound8K fine-tuning experiment or held-out classification accuracy is complete.
 
 > This is the living README for the current **UrbanSound8K/PANNs CNN14** project. Earlier ESC-50/SimpleCNN notebook experiments are historical and **must not** be reported as results of this project.
 
@@ -19,6 +19,81 @@
 
 The teacher's original initial-evaluation deadline in the supplied assignment was **14 September 2026**; confirm any subsequently revised deadline separately. The final package must include source, reproducibility information, required results, figures, comparisons, ablations, README and requirements. Do not submit a verification-only project as a completed trained system.
 
+
+### Historical Stage 4 numerical-precision correction (23 October 2026; head-only CUDA verification now PASSED)
+
+The first actual Windows run of `python run_stage4_checks.py` passed all **10 original Stage 3/4 unit tests**, then stopped at the `head` one-step CUDA check:
+
+```text
+Device=cuda, config=head, AMP=True
+AssertionError: Nonfinite logits
+Stage 4 check status: FAIL_INCOMPLETE
+```
+
+The old Stage 4 checker and trainer both autocast the **entire official CNN14 forward pass** to CUDA `float16`. CNN14 internally uses `torchlibrosa` to calculate power spectrograms; this operation can overflow under FP16. The checkpoint is already independently confirmed loadable and usable in unautocast forward inference; this is **suspected FP16 numerical overflow**, not yet confirmed by controlled local reruns.
+
+**Earlier precision fix (already installed in the project):** `src/precision_policy.py`, updated Stage 4 scripts and `tests/test_precision_policy.py`. The CURRENT ZIP is an incremental gradient diagnostic patch and does not need to replace that already-working precision policy. `--amp auto` selects CUDA **BF16** only when `torch.cuda.is_bf16_supported()` reports true; otherwise it uses FP32, never automatically FP16. `--amp on`/`--amp bf16` require BF16. `--amp off` forces FP32. BF16 shares FP32's exponent range; GradScaler is disabled for BF16 and FP32. Both training and validation now check finite logits and losses and gradient clipping errors on nonfinite norms. No third-party source files, model layers, initial checkpoints or dataset folds are changed.
+
+Run from project root, after replacing the files:
+
+```bat
+python -m unittest discover -s tests -v
+python run_stage4_checks.py
+```
+
+Optional one-step full-precision diagnostic when BF16 fails:
+
+```bat
+python -m src.finetune_check --config head --device cuda --amp off
+```
+
+Then, only if head/fc1/block6 one-step checks pass, run diagnostic pilots (four train/validation batches only). **The latest student run has NOT reached this prerequisite:**
+
+```bat
+python run_stage4_checks.py --pilots
+```
+
+**Verified in this assistant's CPU environment:** 19/19 combined unit tests including this diagnostic patch, syntax validation. **Not verified here:** real CNN14 `fc1`/`block6` nonzero gradients on your GPU, successful end-to-end Stage 4, pilots, full epochs, or classification accuracy; user did verify BF16 head-only update and memory as documented above. Update this record with the real Windows result; do not claim a successful Stage 4 run based on the local unit tests alone.
+
+
+## 2026-10-23 — Stage 4 single-clip zero-gradient investigation (current)
+
+The user's **actual Windows output** after the BF16 precision fix was:
+
+| Check | Verified observation |
+|---|---|
+| Unit tests | 14/14 passed locally on the user's PC |
+| `head` at CUDA BF16 | Finite logits and gradient; classifier parameters updated; 465.9 MiB peak allocated VRAM |
+| `fc1` at CUDA BF16, train-subset first clip (classID 3) | `fc1.weight.grad` exists but its L2 norm was **0.0**; the one-step check stopped before optimizer update |
+| `head` at CUDA FP32 | Finite logits, nonzero head gradient, classifier updated; 721.4 MiB peak allocated VRAM |
+| `block6` | Not executed because the checker stopped at `fc1` |
+| Diagnostic pilots and full training | Not completed |
+
+The official `Cnn14.forward` applies `F.relu_` to `fc1` before emitting its embedding. Thus a single clip's `fc1.weight` gradient can be zero when its pooled input features vanish, even if the head receives a nonzero gradient from activated pretrained `fc1` biases. Other possible explanations include mixed-precision behavior and training-time dropout/SpecAugmentation. **These are hypotheses; the exact real-data cause is not yet determined.** Changing learning rates or disabling the gradient assertion would not be a legitimate fix.
+
+### Diagnostic patch included in this revision
+
+- `src/gradient_audit.py`: reports activation statistics and gradient states, without treating zero gradients as success.
+- `src/finetune_check.py`: tests the first training clip and up to 11 additional deterministically selected **training-only** clips (including one representative per class), reports both `fc1` input and pre-ReLU activation statistics, and performs exactly **one** optimizer update **only if** all relevant trainable weight tensors have nonzero finite gradients. If zero-gradient cases occurred before a successful candidate, they remain explicit warnings. If none work, no optimizer update occurs and Stage 4 remains blocked.
+- `src/finetune_train.py`: logs how many accumulated optimizer steps have nonzero classifier / `fc1` / `conv_block6.conv1` gradients, and rejects an epoch where an intended layer received none. The training fold is used for gradients; validation still determines checkpoint selection; the held-out test fold is not scored.
+- `tests/test_gradient_audit.py`: regression tests for candidate selection and for the mathematically possible combination *nonzero head gradient, zero `fc1.weight` gradient*.
+
+**Run after installing this patch:**
+
+```bat
+cd /d D:\EnvironmentalSoundRecognition
+python run_stage4_checks.py
+```
+
+If `fc1` still fails after scanning the documented candidates, isolate numerical precision and augmentation **without changing official weights or architecture**:
+
+```bat
+python -m src.finetune_check --config fc1 --device cuda --amp off --max-candidates 12
+python -m src.finetune_check --config fc1 --device cuda --amp auto --feature-mode eval --max-candidates 12
+```
+
+`--feature-mode eval` is **diagnostic only**: it disables the official pretrained backbone's *training-time SpecAugmentation and dropout* while retaining gradients for the selected trainable layers. Do not compare its results with normal train-mode runs as though their conditions were identical. Only continue to diagnostic pilots after **all three** real-gradient checks pass. Neither this patch nor its tests establish that the user's CNN14 pretrained convolutional gradients are now nonzero; only execution on the 4 GiB RTX 3050 can do that.
+
 ## 1. Project objective
 
 Build a reproducible PyTorch pipeline that takes a real urban sound recording, processes it into a **32 kHz mono waveform**, passes the waveform into the **official AudioSet-pretrained PANNs CNN14**, and predicts one of UrbanSound8K's ten sound classes using an adapted **2,048 → 10** classifier.
@@ -33,7 +108,7 @@ These are **planned experiments**, not completed results. We will use `CrossEntr
 
 ## 2. Dataset and label mapping
 
-**Official source:** <https://urbansounddataset.weebly.com/urbansound8k.html>  
+**Official source:** https://urbansounddataset.weebly.com/urbansound8k.html  
 **Local expected path:** `data/UrbanSound8K/`  
 **Metadata:** `data/UrbanSound8K/metadata/UrbanSound8K.csv`
 
@@ -131,9 +206,9 @@ python -m pip check
 
 ## 5. Official model source, checkpoint and verification history
 
-**Official implementation:** <https://github.com/qiuqiangkong/audioset_tagging_cnn>  
+**Official implementation:** https://github.com/qiuqiangkong/audioset_tagging_cnn  
 **Locally recorded Git commit:** `d2f4b8c18eab44737fcc0de1248ae21eb43f6aa4`  
-**Published checkpoint archive:** <https://zenodo.org/records/3576403>  
+**Published checkpoint archive:** https://zenodo.org/records/3576403  
 **Original filename:** `checkpoints/Cnn14_mAP=0.431.pth`  
 **Published MD5 and measured local MD5:** `595633ac2d1cac7ef04ebf70e2fee4e4`
 
@@ -381,15 +456,16 @@ There are **no UrbanSound8K training accuracies, loss curves, ablation metrics, 
 
 ## 13. References and provenance
 
-- UrbanSound8K official dataset: <https://urbansounddataset.weebly.com/urbansound8k.html>
-- Official PANNs implementation: <https://github.com/qiuqiangkong/audioset_tagging_cnn>
-- Official CNN14 checkpoint record: <https://zenodo.org/records/3576403>
-- PyTorch checkpoint security / `torch.load`: <https://docs.pytorch.org/docs/stable/generated/torch.load.html>
+- UrbanSound8K official dataset: https://urbansounddataset.weebly.com/urbansound8k.html
+- Official PANNs implementation: https://github.com/qiuqiangkong/audioset_tagging_cnn
+- Official CNN14 checkpoint record: https://zenodo.org/records/3576403
+- PyTorch checkpoint security / `torch.load`: https://docs.pytorch.org/docs/stable/generated/torch.load.html
 - Course assignment: `project_submission_instructions` (provided as part of the project context; preserve your original copy outside the submission if needed).
 
 ---
 
 **Next milestone:** Run the Stage 4 unit suite and `python -m src.finetune_check --config block6 --device cuda` on the RTX 3050. If gradient/update and frozen-BN checks pass, run short diagnostic training, then genuine full-fold validation-selected experiments. Continue monitoring the source-overlap warning; do not touch test data during model selection.
+
 
 ## 14. Stage 4 — CNN14 fine-tuning (code added 23 October 2026; local execution pending)
 

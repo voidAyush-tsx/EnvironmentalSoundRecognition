@@ -23,10 +23,16 @@ ROOT = Path(__file__).resolve().parent
 def main() -> int:
     ap = argparse.ArgumentParser(description="One-command CNN14 fine-tuning sanity checks")
     ap.add_argument("--device", choices=("cuda", "cpu", "auto"), default="cuda")
+    ap.add_argument("--amp", choices=("auto", "on", "off", "bf16"), default="auto",
+                    help="auto uses BF16 on capable CUDA GPUs; otherwise FP32")
     ap.add_argument("--pilots", action="store_true", help="Include two one-epoch limited-batch training diagnostics")
+    ap.add_argument("--max-candidates", type=int, default=12,
+                    help="Train-only clips to check for nonzero pretrained-layer gradients per config (default 12)")
     ap.add_argument("--unit-only", action="store_true", help="Only run CPU unit tests, without model/backward checks")
     ap.add_argument("--skip-block6", action="store_true", help="Skip convolutional update check if GPU VRAM is insufficient")
     args = ap.parse_args()
+    if args.max_candidates < 1:
+        ap.error("--max-candidates must be >= 1")
     commands: list[tuple[str, list[str]]] = [
         ("Stage 3 and Stage 4 unit tests", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"])
     ]
@@ -36,14 +42,15 @@ def main() -> int:
                 continue
             commands.append((f"One backward/update with {config}",
                              [sys.executable, "-m", "src.finetune_check", "--config", config,
-                              "--device", args.device]))
+                              "--device", args.device, "--amp", args.amp,
+                              "--max-candidates", str(args.max_candidates)]))
         if args.pilots:
             for config in ("head", "block6"):
                 if config == "block6" and args.skip_block6:
                     continue
                 commands.append((f"LIMITED pilot training: {config}",
                                  [sys.executable, "-m", "src.finetune_train", "--config", config,
-                                  "--device", args.device, "--test-fold", "1", "--epochs", "1",
+                                  "--device", args.device, "--amp", args.amp, "--test-fold", "1", "--epochs", "1",
                                   "--batch-size", "1", "--accum-steps", "4",
                                   "--max-train-batches", "4", "--max-val-batches", "4"]))
     # Display preconditions rather than silently downloading or altering the environment.
@@ -70,7 +77,7 @@ def main() -> int:
         def echo(s):
             print(s, flush=True)
             log.write(s + "\n")
-        echo("Stage 4 verification; device=" + args.device + "; pilots=" + str(args.pilots))
+        echo("Stage 4 verification; device=" + args.device + "; precision request=" + args.amp + "; pilots=" + str(args.pilots))
         for i, (name, argv) in enumerate(commands, 1):
             echo("\n" + "=" * 70)
             echo(f"{i:02d}. {name}")
@@ -94,6 +101,7 @@ def main() -> int:
     summary = {
         "status": "PASS" if rc == 0 else "FAIL_INCOMPLETE",
         "device": args.device,
+        "amp_requested": args.amp,
         "pilot_diagnostic_only": args.pilots,
         "conv6_gradient_check_executed": any("block6" in x["name"] and "backward" in x["name"]
                                              for x in history),
