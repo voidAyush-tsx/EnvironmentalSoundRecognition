@@ -1,44 +1,34 @@
-# Python bytecode/cache
+# Python / tests
 __pycache__/
 *.py[cod]
-*$py.class
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
-
-# Jupyter cache/autosave metadata (KEEP real .ipynb files tracked)
+# Jupyter / tooling
 .ipynb_checkpoints/
-**/.ipynb_checkpoints/
 .jupyter/
-
-# Virtual environments and OS / IDE noise
-.venv/
-venv/
-env/
-.vscode/.ropeproject/
+.vscode/
 .idea/
 .DS_Store
 Thumbs.db
-*.log
-
-# Local data and large pretrained/fine-tuned weights
-/data/
+tempCodeRunnerFile.*
+# Python environment
+.venv/
+venv/
+env/
+# Local data and weights
+/data/UrbanSound8K/
 /checkpoints/
-/external/audioset_tagging_cnn/
 *.pth
 *.pt
 *.ckpt
 *.safetensors
-
-# Regenerable run outputs; notebooks/README are tracked instead
+# Derived work, private experiment logs and archives
 /results/
-
-# Local packaged archives
+*.log
 *.zip
 *.tar
 *.tar.gz
-
-# Keep source, requirements, README, tests, notebook and smaller figures.
-# Track actual results selectively only after checking size/privacy.
+# Curated reports under reports/ are intentionally committed.
