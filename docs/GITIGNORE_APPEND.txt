@@ -1,0 +1,16 @@
+# Add these patterns to your existing root .gitignore, if not already present.
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.venv/
+.env
+.DS_Store
+checkpoints/
+data/UrbanSound8K/audio/
+results/
+models/*.pt
+models/*.pth
+*.zip
+# KEEP tracked: notebooks/*.ipynb, docs/, reports/faculty_evidence/, source, tests,
+# README.md, requirements.txt, requirements.lock.txt, model access instructions.
