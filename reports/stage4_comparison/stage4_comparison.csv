@@ -1,0 +1,4 @@
+configuration,best_epoch,epochs_completed,best_val_accuracy_pct,best_val_macro_f1,best_val_loss,epoch4_online_train_accuracy_pct,trainable_parameters,trainable_parameter_pct,total_six_epoch_minutes,peak_gpu_mib,final_epoch_val_macro_f1,final_epoch_val_loss,folds,seed,batch_size,accum_steps,precision,test_evaluated
+head,4,6,87.7252,0.863776,0.410351,82.958,20490,0.03,19.8,474.2,0.859172,0.473346,train 3-10 / val 2 / test 1 (reserved),67,1,4,bf16,False
+fc1,4,6,88.0631,0.866844,0.402933,83.7039,4216842,5.15,18.87,522.3,0.861383,0.466176,train 3-10 / val 2 / test 1 (reserved),67,1,4,bf16,False
+block6,4,6,90.6532,0.900967,0.343293,88.9686,60848138,74.33,28.65,1278.1,0.88465,0.398625,train 3-10 / val 2 / test 1 (reserved),67,1,4,bf16,False
