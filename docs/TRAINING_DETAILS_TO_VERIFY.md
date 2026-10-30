@@ -1,23 +1,24 @@
-# Final hyperparameter verification — do not fabricate settings
+# Verified training details
 
-The three uploaded full-fold `config.json` files **prove** the following values (all three runs):
+This document records **what the current source implements**, with run values grounded in the three full-fold configuration files under `reports/faculty_evidence/training_runs/`.
 
-| Training choice | Verified value | Evidence |
+| Item | Recorded value or behavior | Source |
 |---|---|---|
-| Optimizer | **AdamW** was documented in Stage 4 implementation; verify actual `src/finetune_train.py` before finalizing faculty README | Original training source, not exported config field |
-| Loss | **CrossEntropyLoss** was documented in Stage 4 implementation; verify actual `src/finetune_loop.py` or trainer before finalizing faculty README | Original training source, not exported config field |
-| Learning rate (classifier) | **0.001** | `config.json`: `lr_head` |
-| Learning rate (later trainable CNN layers) | **0.00001** | `config.json`: `lr_backbone` |
-| Weight decay | **0.0001** | `config.json`: `weight_decay` |
-| Batch size | **1** | `config.json`: `batch_size` |
-| Gradient accumulation | **4** (effective gradient batch target = 4) | `config.json`: `accum_steps` |
-| Epoch budget | **6** requested and completed | `summary.json`, `history.csv` |
-| Early stopping patience | **2** | `config.json`: `patience` |
-| Precision | **BF16 CUDA** | `config.json`: `precision` |
-| Seed | **67** | `config.json`: `seed` |
-| Checkpoint criterion | Best validation macro-F1; epoch **4** | `summary.json` |
-| Augmentation policy | CNN14 internal SpecAugmentation and dropout operated in training mode according to real gradient-check outputs; validation/test in eval mode | Stage 4 checker logs |
-| Scheduler | **NOT recorded in the uploaded config JSON**; inspect the actual optimizer/trainer code to confirm whether one was used and its parameters; do not infer 'None' blindly. | Source inspection required |
-| Dropout probability | **NOT recorded in uploaded config JSON**; inspect official CNN14 `pytorch/models.py` and the wrapper forward path to report the active rates and whether train/eval differs. | Source inspection required |
+| Optimizer | **AdamW**; two parameter groups (head vs later pretrained layers) | `src/finetune_model.py::optimizer_for_model` |
+| Classification loss | **Cross-entropy on 10 raw logits** | `src/finetune_train.py::train_epoch`, `validate_epoch` |
+| Head learning rate | **1e-3** | Train CLI defaults / `config.json` |
+| Pretrained trainable-layer learning rate | **1e-5** | Train CLI defaults / `config.json` |
+| Weight decay | **1e-4** | AdamW creation / `config.json` |
+| Batch / gradient accumulation | **1 / 4** | `config.json` |
+| Maximum epochs / patience | **6 / 2** | `config.json` |
+| Precision | **CUDA BF16** on supported GPU | `src/precision_policy.py` / run `config.json` |
+| Seed | **67**, deterministic cuDNN flags | `src/finetune_train.py::seed_everything` |
+| Gradient clipping | max norm **1.0**; reject nonfinite gradients | `src/finetune_train.py::train_epoch` |
+| Scheduler | **None**: the trainer neither constructs nor steps an LR scheduler | `src/finetune_train.py` |
+| Checkpoint selection | Best validation **macro-F1**, accuracy as tie-break; epoch **4** | `src/finetune_train.py`, run summaries |
+| Freeze policy | Earlier CNN14 blocks frozen; `conv_block6` and `fc1` trainable only in designated configurations | `src/finetune_model.py` |
+| BatchNorm | All pretrained BN running statistics held fixed | `CNN14ForUrbanSound.train()` |
+| Dropout/SpecAugmentation | Official pretrained CNN14 forward uses its internal training-mode dropout/SpecAugmentation. This project does not add an extra dropout layer. | Official pinned `pytorch/models.py` and wrapper |
+| Tuning | Controlled **freezing-depth ablation** (`head`, `fc1`, `block6`); **no LR grid-search claim** | Three run configurations |
 
-**Action in Notebook 01 or VS Code:** inspect and copy the relevant `optimizer=...`, loss criterion, scheduler initialization/step, and `F.dropout(..., p=...)` source lines into this document/README; don't claim a hyperparameter sweep unless it was actually run. A fixed set of values plus three freezing-depth ablations is a valid controlled design but not a learning-rate search.
+**Checkpoint note:** Selected `best.pt` contains trainable parameters only; restore the original AudioSet backbone first. A ten-fold mean was *not* measured.
