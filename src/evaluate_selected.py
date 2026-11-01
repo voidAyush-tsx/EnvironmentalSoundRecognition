@@ -11,9 +11,6 @@ validation-selected parameter subset before any held-out test inference.
 """
 from __future__ import annotations
 
-import argparse
-import csv
-import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
@@ -28,17 +25,11 @@ from torch.utils.data import DataLoader
 
 from .dataset import CLASS_NAMES, PROJECT_ROOT, UrbanSound8KDataset, load_metadata, split_metadata
 from .finetune_model import EXPECTED_PANN_COMMIT, load_model, load_trainable_state
-from .finetune_train import resolve_device, seed_everything
-from .precision_policy import autocast_context, assert_finite_logits, choose_precision
+from .runtime import resolve_device, seed_everything
+from .artifacts import read_json, write_csv, sha256_file
+from .runtime import autocast_context, assert_finite_logits, choose_precision
 
 ALL_LABELS = tuple(range(10))
-
-
-def read_json(path: Path) -> dict:
-    value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, dict):
-        raise ValueError(f"Expected an object in {path}")
-    return value
 
 
 def validate_selected_run(run_dir: Path, *, expected_config: str = "block6", expected_test_fold: int = 1) -> tuple[dict, dict, dict]:
@@ -144,15 +135,6 @@ def compute_metrics(y_true: np.ndarray, probabilities: np.ndarray) -> tuple[dict
     return result, per_class, cm
 
 
-def write_csv(path: Path, rows: list[dict]) -> None:
-    if not rows:
-        raise ValueError("No rows to save")
-    with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def draw_figures(out: Path, cm: np.ndarray, rows: list[dict], y_true: np.ndarray, scores: np.ndarray) -> None:
     import matplotlib
     matplotlib.use("Agg")
@@ -205,24 +187,10 @@ def draw_figures(out: Path, cm: np.ndarray, rows: list[dict], y_true: np.ndarray
     plt.close(fig)
 
 
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def main() -> None:
-    ap = argparse.ArgumentParser(description="ONE held-out fold evaluation of the validation-selected block6 checkpoint")
-    ap.add_argument("--run-dir", type=Path, required=True, help="Existing full Stage 4 block6 run folder with best.pt")
-    ap.add_argument("--expected-test-fold", type=int, default=1)
-    ap.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
-    ap.add_argument("--amp", choices=("auto", "off", "bf16", "on"), default="auto")
-    ap.add_argument("--batch-size", type=int, default=1)
-    ap.add_argument("--num-workers", type=int, default=0)
-    ap.add_argument("--out", type=Path, default=None)
-    args = ap.parse_args()
+def main(argv=None) -> None:
+    from .arguments import evaluation_parser
+    ap = evaluation_parser()
+    args = ap.parse_args(argv)
     if args.batch_size < 1 or args.num_workers < 0:
         ap.error("--batch-size must be positive and --num-workers nonnegative")
     if args.expected_test_fold != 1:
@@ -247,7 +215,7 @@ def main() -> None:
     seed_everything(int(config["seed"]))
     device = resolve_device(args.device)
     precision = choose_precision(device, args.amp)
-    df = load_metadata()
+    df = load_metadata(args.dataset_root)
     _, validation_df, test_df = split_metadata(df, 1)
     if len(test_df) != stage4_summary["test_samples_reserved_not_evaluated"]:
         raise ValueError("Test fold size differs from Stage 4 configuration")
@@ -256,12 +224,12 @@ def main() -> None:
     print(f"VALIDATION-SELECTED RUN: {run_dir}", flush=True)
     print(f"Configuration: block6, selected epoch={stage4_summary['best_epoch']}, val macro-F1={stage4_summary['best_val_macro_f1']:.6f}", flush=True)
     print(f"ONE-TIME TEST: fold=1, samples={len(test_df)}, device={device}, precision={precision}", flush=True)
-    model = load_model("block6")
+    model = load_model("block6", weights=args.weights, source=args.pann_source)
     load_trainable_state(model, ckpt["trainable_parameters"])
     del ckpt
     model.to(device)
     model.eval()
-    loader = DataLoader(UrbanSound8KDataset(test_df), batch_size=args.batch_size,
+    loader = DataLoader(UrbanSound8KDataset(test_df, args.dataset_root), batch_size=args.batch_size,
                         shuffle=False, num_workers=args.num_workers, pin_memory=(device.type == "cuda"))
     labels_collected = []
     score_batches = []

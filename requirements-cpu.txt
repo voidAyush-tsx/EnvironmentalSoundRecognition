@@ -1,0 +1,5 @@
+# CPU development setup, keeping the original torch release and shared ranges.
+# This installation recipe has not been installed as part of the refactor.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.7.0+cpu
+-r requirements-common.txt

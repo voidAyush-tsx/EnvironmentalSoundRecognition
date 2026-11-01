@@ -4,7 +4,7 @@ CNN14 expects a mono float32 waveform [batch, time], NOT an externally
 computed Mel spectrogram. This module deliberately has no data augmentation.
 
 Run diagnostics from project root:
-    python -m src.check_dataloader
+    python -m src check-loader
 """
 from __future__ import annotations
 
@@ -17,52 +17,11 @@ import soundfile as sf
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATASET_ROOT = PROJECT_ROOT / "data" / "UrbanSound8K"
-
-# Official classID values as given in UrbanSound8K.csv (not alphabetical).
-CLASS_NAMES = (
-    "air_conditioner", "car_horn", "children_playing", "dog_bark",
-    "drilling", "engine_idling", "gun_shot", "jackhammer",
-    "siren", "street_music",
+from .config import (
+    PROJECT_ROOT, DATASET_ROOT, CLASS_NAMES, CLASS_TO_ID,
+    SAMPLE_RATE, CLIP_SECONDS, TARGET_SAMPLES, project_path,
 )
-CLASS_TO_ID = {name: i for i, name in enumerate(CLASS_NAMES)}
-
-# Verified official CNN14 pretrained frontend: raw waveform, 32 kHz.
-SAMPLE_RATE = 32_000
-CLIP_SECONDS = 4
-TARGET_SAMPLES = SAMPLE_RATE * CLIP_SECONDS
-
-
-def load_metadata(dataset_root: str | Path = DATASET_ROOT) -> pd.DataFrame:
-    """Validate metadata, preserving the predefined folds and class IDs."""
-    root = Path(dataset_root)
-    csv_path = root / "metadata" / "UrbanSound8K.csv"
-    if not csv_path.is_file():
-        raise FileNotFoundError(f"Metadata not found: {csv_path}")
-    df = pd.read_csv(csv_path)
-    required = {"slice_file_name", "fold", "classID", "class", "fsID"}
-    missing = required.difference(df.columns)
-    if missing:
-        raise ValueError(f"Missing metadata columns: {sorted(missing)}")
-    if len(df) != 8_732:
-        raise ValueError(f"Expected 8732 metadata rows; found {len(df)}")
-    if df[list(required)].isna().any().any():
-        raise ValueError("Metadata contains null values in required columns")
-    df["fold"] = pd.to_numeric(df["fold"], errors="raise").astype("int64")
-    df["classID"] = pd.to_numeric(df["classID"], errors="raise").astype("int64")
-    if set(df["fold"]) != set(range(1, 11)):
-        raise ValueError("Fold IDs must be 1-10")
-    if set(df["classID"]) != set(range(10)):
-        raise ValueError("Class IDs must be 0-9")
-    for class_id, name in enumerate(CLASS_NAMES):
-        values = set(df.loc[df["classID"] == class_id, "class"])
-        if values != {name}:
-            raise ValueError(f"classID {class_id}: expected {name}; found {values}")
-    keys = df["fold"].astype(str) + "/" + df["slice_file_name"].astype(str)
-    if not keys.is_unique:
-        raise ValueError("Duplicate (fold, slice_file_name) metadata entries")
-    return df.reset_index(drop=True)
+from .metadata import load_metadata
 
 
 def split_metadata(df: pd.DataFrame, test_fold: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -123,7 +82,7 @@ class UrbanSound8KDataset(Dataset):
 
     def __init__(self, metadata: pd.DataFrame, dataset_root: str | Path = DATASET_ROOT):
         self.metadata = metadata.reset_index(drop=True).copy()
-        self.audio_root = Path(dataset_root) / "audio"
+        self.audio_root = project_path(dataset_root) / "audio"
 
     def __len__(self) -> int:
         return len(self.metadata)

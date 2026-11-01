@@ -1,0 +1,12 @@
+# Shared direct dependencies; ranges preserved from the original setup.
+torchlibrosa==0.1.0
+numpy>=2.1,<3
+scipy>=1.15,<2
+librosa>=0.11.0,<0.12
+soundfile>=0.13,<0.14
+pandas>=2.2,<3
+scikit-learn>=1.6,<2
+matplotlib>=3.9,<4
+seaborn>=0.13,<0.14
+tqdm>=4.66,<5
+ipykernel>=6.29,<8

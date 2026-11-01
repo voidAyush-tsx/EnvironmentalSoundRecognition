@@ -1,5 +1,6 @@
 """Fast CPU smoke tests for Stage 4 train/validation aggregation."""
 import unittest
+import copy
 
 import torch
 from torch import nn
@@ -8,6 +9,27 @@ from src.finetune_train import train_epoch, validate_epoch
 
 
 class LoopTests(unittest.TestCase):
+    def test_accumulation_matches_manual_updates_including_final_partial_window(self):
+        torch.manual_seed(19)
+        model = nn.Linear(4, 10)
+        expected = copy.deepcopy(model)
+        waves, labels = torch.randn(5, 4), torch.tensor([0, 1, 2, 3, 4])
+        loader = DataLoader(TensorDataset(waves, labels), batch_size=1)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.03)
+        manual = torch.optim.SGD(expected.parameters(), lr=0.03)
+        for start in range(0, 5, 2):
+            manual.zero_grad(set_to_none=True)
+            end = min(start + 2, 5)
+            for i in range(start, end):
+                (nn.functional.cross_entropy(expected(waves[i:i+1]), labels[i:i+1]) / (end-start)).backward()
+            nn.utils.clip_grad_norm_(expected.parameters(), max_norm=1.0, error_if_nonfinite=True)
+            manual.step()
+        stats = train_epoch(model, loader, optimizer, torch.amp.GradScaler("cuda", enabled=False),
+                            torch.device("cpu"), "off", 2, 0)
+        self.assertEqual(stats["optimizer_steps"], 3)
+        for actual, wanted in zip(model.parameters(), expected.parameters()):
+            self.assertTrue(torch.equal(actual, wanted))
+
     def test_train_and_validate_with_accumulation(self):
         torch.manual_seed(7)
         model = nn.Sequential(nn.Linear(4, 16), nn.ReLU(), nn.Linear(16, 10))

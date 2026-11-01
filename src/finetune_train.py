@@ -6,16 +6,12 @@ clearly flagged as DIAGNOSTIC_ONLY and must not be treated as project metrics.
 """
 from __future__ import annotations
 
-import argparse
-import csv
 import json
 import math
-import random
 import time
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import torch
 from sklearn.metrics import f1_score
 from torch import nn
@@ -25,25 +21,13 @@ from .finetune_model import (
     CONFIGS, load_model, load_trainable_state, optimizer_for_model,
     parameter_summary, trainable_state, EXPECTED_PANN_COMMIT,
 )
-from .precision_policy import AMP_CHOICES, choose_precision, autocast_context, assert_finite_logits
+from .runtime import AMP_CHOICES, choose_precision, autocast_context, assert_finite_logits
 from .gradient_audit import gradient_measure
 
 
-def resolve_device(device_str: str) -> torch.device:
-    choice = ("cuda" if torch.cuda.is_available() else "cpu") if device_str == "auto" else device_str
-    if choice == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("CUDA was requested but not found")
-    return torch.device(choice)
-
-
-def seed_everything(seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
+# Re-exported for existing notebook/import compatibility.
+from .runtime import resolve_device, seed_everything
+from .artifacts import write_csv
 
 
 def accuracy_numerator(logits: torch.Tensor, labels: torch.Tensor) -> int:
@@ -114,7 +98,7 @@ def train_epoch(model, loader, optimizer, scaler, device, precision: str | bool,
             "No nonzero training gradients across the entire epoch for: " + ", ".join(inactive)
             + ". Finite logits/loss do not establish partial fine-tuning. "
             "Investigate the CNN14 activations, input audio and precision with "
-            "python -m src.finetune_check --config block6 --amp off."
+            "python -m src check-gradients --config block6 --amp off."
         )
     return {"loss": total_loss / total_samples, "accuracy": total_correct / total_samples,
             "samples": total_samples, "batches": planned,
@@ -154,10 +138,7 @@ def validate_epoch(model, loader, device, precision: str | bool, limit_batches: 
 def save_history_csv(rows: list[dict], file: Path) -> None:
     if not rows:
         return
-    with file.open("w", newline="", encoding="utf-8") as output:
-        writer = csv.DictWriter(output, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    write_csv(file, rows)
 
 
 def save_learning_curves(rows: list[dict], target: Path) -> None:
@@ -181,28 +162,10 @@ def save_learning_curves(rows: list[dict], target: Path) -> None:
     plt.close(fig)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Train official pretrained CNN14 on UrbanSound8K")
-    parser.add_argument("--config", choices=CONFIGS, default="block6")
-    parser.add_argument("--test-fold", type=int, choices=range(1, 11), metavar="1..10", default=1)
-    parser.add_argument("--epochs", type=int, default=3)
-    parser.add_argument("--batch-size", type=int, default=1)
-    parser.add_argument("--accum-steps", type=int, default=4)
-    parser.add_argument("--max-train-batches", type=int, default=0,
-                        help="0=full training fold; positive=diagnostic-only batch limit")
-    parser.add_argument("--max-val-batches", type=int, default=0,
-                        help="0=full validation fold; positive=diagnostic-only batch limit")
-    parser.add_argument("--patience", type=int, default=3)
-    parser.add_argument("--lr-head", type=float, default=1e-3)
-    parser.add_argument("--lr-backbone", type=float, default=1e-5)
-    parser.add_argument("--weight-decay", type=float, default=1e-4)
-    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
-    parser.add_argument("--amp", choices=AMP_CHOICES, default="auto",
-                        help="auto uses BF16 if supported; otherwise FP32. on/bf16 requires BF16")
-    parser.add_argument("--seed", type=int, default=67)
-    parser.add_argument("--out", type=Path, default=None,
-                        help="Optional unique output directory; existing best.pt won't be overwritten")
-    args = parser.parse_args()
+def main(argv=None):
+    from .arguments import training_parser
+    parser = training_parser()
+    args = parser.parse_args(argv)
     if args.epochs < 1 or args.batch_size < 1 or args.accum_steps < 1 or args.patience < 1:
         parser.error("epochs, batch-size, accum-steps, and patience must be >= 1")
     if args.max_train_batches < 0 or args.max_val_batches < 0:
@@ -211,17 +174,17 @@ def main():
     device = resolve_device(args.device)
     precision = choose_precision(device, args.amp)
     diagnostic_only = args.max_train_batches > 0 or args.max_val_batches > 0
-    fold_df = load_metadata()
+    fold_df = load_metadata(args.dataset_root)
     train_df, val_df, test_df = split_metadata(fold_df, args.test_fold)
     train_loader, val_loader, _ = make_loaders(
         fold_df, test_fold=args.test_fold, batch_size=args.batch_size,
-        num_workers=0, seed=args.seed,
+        num_workers=0, seed=args.seed, dataset_root=args.dataset_root,
     )
     # NOTE: test DataLoader is never iterated and its recordings never decoded.
     print(f"CONFIG={args.config}, test-fold={args.test_fold}, val-fold={int(val_df.fold.iloc[0])}", flush=True)
     print(f"Train={len(train_df)}, validation={len(val_df)}, reserved test={len(test_df)}", flush=True)
     print(f"Device={device}, precision={precision} (requested={args.amp}), diagnostic_only={diagnostic_only}", flush=True)
-    model = load_model(args.config).to(device)
+    model = load_model(args.config, weights=args.weights, source=args.pann_source).to(device)
     counts = parameter_summary(model)
     print("Parameter counts:", counts, flush=True)
     optimizer = optimizer_for_model(model, lr_head=args.lr_head,
@@ -245,7 +208,9 @@ def main():
         "amp": precision != "off", "precision": precision, "max_train_batches": args.max_train_batches,
         "max_val_batches": args.max_val_batches, "diagnostic_only": diagnostic_only,
         "parameter_counts": counts,
-        "checkpoint_basis": "checkpoints/Cnn14_AudioSet_state_dict_safe.pth",
+        "checkpoint_basis": (str(args.weights.relative_to(PROJECT_ROOT)).replace("\\", "/")
+                             if args.weights.is_relative_to(PROJECT_ROOT) else str(args.weights)),
+        "dataset_root": str(args.dataset_root), "pann_source": str(args.pann_source),
         "model_source_commit": EXPECTED_PANN_COMMIT,
         "batchnorm_policy": "all pretrained BN running stats frozen; later block affine params train when unfrozen",
         "data_preprocessing": "mono; 32000 Hz; center crop/right pad to 128000 samples",

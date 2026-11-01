@@ -7,8 +7,6 @@ kept in evaluation mode while learning trainable affine parameters if enabled.
 """
 from __future__ import annotations
 
-import sys
-import subprocess
 from collections import OrderedDict
 from pathlib import Path
 
@@ -16,20 +14,11 @@ import torch
 from torch import nn
 from torch.nn.modules.batchnorm import _BatchNorm
 
-from .dataset import PROJECT_ROOT
+from .config import PROJECT_ROOT, PANN_SOURCE, SAFE_WEIGHTS, CONFIGS, EXPECTED_PANN_COMMIT
+from .pann_adapter import actual_source_commit, load_backbone
 
-PANN_DIR = PROJECT_ROOT / "external" / "audioset_tagging_cnn" / "pytorch"
-SAFE_WEIGHTS = PROJECT_ROOT / "checkpoints" / "Cnn14_AudioSet_state_dict_safe.pth"
-CONFIGS = ("head", "fc1", "block6")
-EXPECTED_PANN_COMMIT = "d2f4b8c18eab44737fcc0de1248ae21eb43f6aa4"
-
-
-def actual_source_commit() -> str:
-    result = subprocess.check_output(
-        ["git", "-C", str(PANN_DIR.parent), "rev-parse", "HEAD"], text=True
-    ).strip()
-    return result
-
+# Compatibility alias for callers that inspected this directory.
+PANN_DIR = PANN_SOURCE / "pytorch"
 
 
 class CNN14ForUrbanSound(nn.Module):
@@ -73,32 +62,11 @@ class CNN14ForUrbanSound(nn.Module):
         return logits
 
 
-def load_model(config: str = "block6", *, weights: str | Path = SAFE_WEIGHTS) -> CNN14ForUrbanSound:
+def load_model(config: str = "block6", *, weights: str | Path = SAFE_WEIGHTS,
+               source: str | Path = PANN_SOURCE) -> CNN14ForUrbanSound:
     if config not in CONFIGS:
         raise ValueError(f"Unknown fine-tuning config: {config}")
-    weights = Path(weights)
-    if not weights.is_file():
-        raise FileNotFoundError(f"Missing restricted-load AudioSet state dictionary: {weights}")
-    for file in (PANN_DIR / "models.py", PANN_DIR / "pytorch_utils.py"):
-        if not file.is_file():
-            raise FileNotFoundError(f"Official PANNs implementation missing: {file}")
-    found_commit = actual_source_commit()
-    if found_commit != EXPECTED_PANN_COMMIT:
-        raise RuntimeError(f"PANNs source commit mismatch: {found_commit} != {EXPECTED_PANN_COMMIT}")
-    sys.path.insert(0, str(PANN_DIR))
-    from models import Cnn14  # type: ignore[import-not-found]
-
-    backbone = Cnn14(
-        sample_rate=32000, window_size=1024, hop_size=320,
-        mel_bins=64, fmin=50, fmax=14000, classes_num=527,
-    )
-    packaged = torch.load(weights, map_location="cpu", weights_only=True)
-    if not isinstance(packaged, dict) or "model" not in packaged:
-        raise ValueError("Expected tensor-only checkpoint with 'model' key")
-    result = backbone.load_state_dict(packaged["model"], strict=True)
-    assert not result.missing_keys and not result.unexpected_keys
-    del packaged
-    return CNN14ForUrbanSound(backbone, config=config)
+    return CNN14ForUrbanSound(load_backbone(weights=weights, source=source), config=config)
 
 
 def parameter_summary(model: nn.Module) -> dict[str, int]:

@@ -1,34 +1,77 @@
-"""Stage 2: audit UrbanSound8K metadata and its fixed 8/1/1 ten-fold protocol.
-
-Run from project root:
-    python src/check_folds.py
-
-Outputs:
-    results/fold_split_summary.csv
-    results/cross_fold_source_summary.csv
-    results/cross_fold_source_details.csv
-
-Never reallocates recordings or changes their prescribed folds.
-It reports source-recording overlap as an AUDIT finding, not an automatic failure.
-No audio is decoded and no model is trained.
-"""
-from __future__ import annotations
-
-import argparse
+"""Shared UrbanSound8K metadata validation and physical-file audit (no PyTorch)."""
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_METADATA = ROOT / "data" / "UrbanSound8K" / "metadata" / "UrbanSound8K.csv"
-DEFAULT_RESULTS = ROOT / "results"
+from .config import CLASS_NAMES, DATASET_ROOT, project_path
 
-CLASS_NAMES = [
-    "air_conditioner", "car_horn", "children_playing", "dog_bark",
-    "drilling", "engine_idling", "gun_shot", "jackhammer",
-    "siren", "street_music",
-]
+
+def validate_metadata(df: pd.DataFrame, *, extra_columns=()) -> pd.DataFrame:
+    """Validate official labels/folds without changing their order or membership."""
+    df = df.copy()
+    required = {"slice_file_name", "fold", "classID", "class", "fsID", *extra_columns}
+    missing = required.difference(df.columns)
+    if missing:
+        raise ValueError(f"Missing metadata columns: {sorted(missing)}")
+    if len(df) != 8_732:
+        raise ValueError(f"Expected 8732 metadata rows; found {len(df)}")
+    if df[list(required)].isna().any().any():
+        raise ValueError("Metadata contains null values in required columns")
+    df["fold"] = pd.to_numeric(df["fold"], errors="raise").astype("int64")
+    df["classID"] = pd.to_numeric(df["classID"], errors="raise").astype("int64")
+    if set(df["fold"]) != set(range(1, 11)):
+        raise ValueError("Fold IDs must be 1-10")
+    if set(df["classID"]) != set(range(10)):
+        raise ValueError("Class IDs must be 0-9")
+    for class_id, name in enumerate(CLASS_NAMES):
+        values = set(df.loc[df["classID"] == class_id, "class"])
+        if values != {name}:
+            raise ValueError(f"classID {class_id}: expected {name}; found {values}")
+    keys = df["fold"].astype(str) + "/" + df["slice_file_name"].astype(str)
+    if not keys.is_unique:
+        raise ValueError("Duplicate (fold, slice_file_name) metadata entries")
+    return df.reset_index(drop=True)
+
+
+def load_metadata(dataset_root: str | Path = DATASET_ROOT) -> pd.DataFrame:
+    csv_path = project_path(dataset_root) / "metadata" / "UrbanSound8K.csv"
+    if not csv_path.is_file():
+        raise FileNotFoundError(f"Metadata not found: {csv_path}. See docs/REPRODUCIBILITY.md")
+    return validate_metadata(pd.read_csv(csv_path))
+
+
+def audit_dataset_paths(dataset_root: str | Path = DATASET_ROOT) -> dict:
+    """Check all metadata references once, without decoding any audio."""
+    root = project_path(dataset_root)
+    df = load_metadata(root)
+    counts = {i: len(list((root / "audio" / f"fold{i}").glob("*.wav"))) for i in range(1, 11)}
+    missing = [str(root / "audio" / f"fold{r.fold}" / r.slice_file_name)
+               for r in df.itertuples(index=False)
+               if not (root / "audio" / f"fold{r.fold}" / r.slice_file_name).is_file()]
+    return {"metadata_rows": len(df), "fold_counts": counts, "wav_count": sum(counts.values()),
+            "missing_files": missing, "passed": not missing and sum(counts.values()) == 8732}
+
+
+def paths_main(argv=None) -> int:
+    from .arguments import dataset_parser
+    parser = dataset_parser()
+    args = parser.parse_args(argv)
+    try:
+        report = audit_dataset_paths(args.dataset_root)
+    except (OSError, ValueError) as exc:
+        print(f"DATASET AUDIT: FAIL: {exc}")
+        return 1
+    print("Dataset:", args.dataset_root)
+    print("Metadata rows:", report["metadata_rows"])
+    for fold, count in report["fold_counts"].items():
+        print(f"fold{fold}: {count}")
+    print("Total WAV files:", report["wav_count"])
+    print("Missing referenced files:", len(report["missing_files"]))
+    for path in report["missing_files"][:10]:
+        print("  ", path)
+    print("DATASET AUDIT:", "PASS" if report["passed"] else "FAIL")
+    return 0 if report["passed"] else 1
 
 
 def audit_source_groups(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -96,33 +139,15 @@ def audit_source_groups(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     ]), details
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Audit UrbanSound8K official folds")
-    parser.add_argument("--metadata", type=Path, default=DEFAULT_METADATA)
-    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
-    args = parser.parse_args()
+def folds_main(argv=None) -> None:
+    from .arguments import folds_parser
+    parser = folds_parser()
+    args = parser.parse_args(argv)
 
     metadata = args.metadata.resolve()
     if not metadata.is_file():
         raise FileNotFoundError(f"UrbanSound8K metadata not found: {metadata}")
-    df = pd.read_csv(metadata)
-    required = {"slice_file_name", "fsID", "fold", "classID", "class", "start", "end"}
-    missing = required.difference(df.columns)
-    if missing:
-        raise ValueError(f"Required metadata columns missing: {sorted(missing)}")
-    if len(df) != 8732:
-        raise AssertionError(f"Expected 8,732 metadata rows, found {len(df)}")
-    if df[list(required)].isna().any().any():
-        raise AssertionError("Null values found in required metadata columns")
-
-    df["fold"] = pd.to_numeric(df["fold"], errors="raise").astype(int)
-    df["classID"] = pd.to_numeric(df["classID"], errors="raise").astype(int)
-    assert set(df["fold"]) == set(range(1, 11)), "Fold IDs must be 1..10"
-    assert set(df["classID"]) == set(range(10)), "Class IDs must be 0..9"
-    for class_id, name in enumerate(CLASS_NAMES):
-        actual = set(df.loc[df["classID"] == class_id, "class"])
-        if actual != {name}:
-            raise AssertionError(f"classID {class_id}: expected {name}, found {actual}")
+    df = validate_metadata(pd.read_csv(metadata), extra_columns=("start", "end"))
 
     # The two-component key represents one physical clip in the official layout.
     df["record_key"] = df["fold"].astype(str) + "/" + df["slice_file_name"]
@@ -197,7 +222,3 @@ def main() -> None:
     if not source_summary.empty:
         print("SOURCE-ISOLATION WARNING remains open; investigate before model training.")
     print("No clips were moved, removed, or relabelled; no model was trained.")
-
-
-if __name__ == "__main__":
-    main()

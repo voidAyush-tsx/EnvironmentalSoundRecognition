@@ -1,16 +1,28 @@
-"""Precision policy for official PANNs Cnn14 with torchlibrosa log-Mel frontend.
-
-Avoid CUDA FP16 autocast around the whole model: torchlibrosa computes a
-power spectrogram before log compression and intermediate values can overflow
-in float16. Prefer bfloat16 (FP32 exponent range) on compatible GPUs; else FP32.
-No changes are made to the official PANNs source code or pretrained weights.
-"""
-from __future__ import annotations
-
+"""Shared device, reproducible seeding, and BF16/FP32 numerical policy."""
 from contextlib import nullcontext
+import random
+
+import numpy as np
 import torch
 
-AMP_CHOICES = ("auto", "on", "off", "bf16")
+from .config import AMP_CHOICES
+
+
+def resolve_device(device_str: str) -> torch.device:
+    choice = ("cuda" if torch.cuda.is_available() else "cpu") if device_str == "auto" else device_str
+    if choice == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested but not found; use --device cpu or --device auto")
+    return torch.device(choice)
+
+
+def seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 
 def choose_precision(device: torch.device, requested: str = "auto") -> str:

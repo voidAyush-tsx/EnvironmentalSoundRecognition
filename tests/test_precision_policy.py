@@ -2,7 +2,7 @@
 from unittest import TestCase
 from unittest.mock import patch
 import torch
-from src.precision_policy import choose_precision, autocast_context, assert_finite_logits
+from src.runtime import choose_precision, autocast_context, assert_finite_logits
 
 class PrecisionTests(TestCase):
     def test_cpu_fallback(self):
@@ -12,13 +12,13 @@ class PrecisionTests(TestCase):
             choose_precision(torch.device("cpu"), "on")
 
     def test_cuda_bfloat16_selection(self):
-        with patch("src.precision_policy.torch.cuda.is_bf16_supported", return_value=True):
+        with patch("src.runtime.torch.cuda.is_bf16_supported", return_value=True):
             self.assertEqual(choose_precision(torch.device("cuda"), "auto"), "bf16")
             self.assertEqual(choose_precision(torch.device("cuda"), "on"), "bf16")
             self.assertEqual(choose_precision(torch.device("cuda"), "off"), "off")
 
     def test_unsupported_cuda_never_enables_fp16(self):
-        with patch("src.precision_policy.torch.cuda.is_bf16_supported", return_value=False):
+        with patch("src.runtime.torch.cuda.is_bf16_supported", return_value=False):
             self.assertEqual(choose_precision(torch.device("cuda"), "auto"), "off")
             with self.assertRaises(RuntimeError):
                 choose_precision(torch.device("cuda"), "bf16")

@@ -10,9 +10,8 @@ its own log-Mel representation from raw waveforms internally.
 """
 from __future__ import annotations
 
-import argparse
 import json
-from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
 import librosa
@@ -28,6 +27,16 @@ from .dataset import (
     DATASET_ROOT, PROJECT_ROOT, CLASS_NAMES, SAMPLE_RATE,
     TARGET_SAMPLES, load_metadata, read_waveform, split_metadata,
 )
+
+
+
+
+def audit_output_paths(results_dir: Path, figures_dir: Path, *, partial: bool) -> tuple[Path, Path]:
+    """Even explicit output bases keep partial scans separate from full evidence."""
+    if partial:
+        run = "pilot_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        return results_dir / "audio_audits" / run, figures_dir / "audio_audits" / run
+    return results_dir, figures_dir
 
 
 def save_figures(df: pd.DataFrame, root: Path, figures_dir: Path) -> None:
@@ -74,19 +83,17 @@ def save_figures(df: pd.DataFrame, root: Path, figures_dir: Path) -> None:
     plt.close(fig)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Audit UrbanSound8K audio and generate figures")
-    parser.add_argument("--dataset-root", type=Path, default=DATASET_ROOT)
-    parser.add_argument("--results-dir", type=Path, default=PROJECT_ROOT / "results")
-    parser.add_argument("--figures-dir", type=Path, default=PROJECT_ROOT / "figures")
-    parser.add_argument("--max-files", type=int, default=None,
-                        help="Scan only first N files for a quick smoke test; NOT a full integrity audit")
-    args = parser.parse_args()
+def main(argv=None) -> None:
+    from .arguments import audio_parser
+    parser = audio_parser()
+    args = parser.parse_args(argv)
     if args.max_files is not None and args.max_files <= 0:
         parser.error("--max-files must be positive")
 
     root = args.dataset_root
     df = load_metadata(root)
+    args.results_dir, args.figures_dir = audit_output_paths(
+        args.results_dir, args.figures_dir, partial=args.max_files is not None and args.max_files < len(df))
     args.results_dir.mkdir(parents=True, exist_ok=True)
     args.figures_dir.mkdir(parents=True, exist_ok=True)
 
