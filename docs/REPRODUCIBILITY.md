@@ -150,7 +150,7 @@ invocation creates a new run; it does not replace recorded historical evidence.
 The original backbone and selected task parameters have different roles:
 
 | Resource | Location / identity |
-|---|---|
+| --- | --- |
 | Original pretrained AudioSet backbone | `checkpoints/Cnn14_mAP=0.431.pth`, from [official Zenodo](https://zenodo.org/records/3576403) |
 | Published original MD5 | `595633ac2d1cac7ef04ebf70e2fee4e4` |
 | Restricted-loadable backbone export | `checkpoints/Cnn14_AudioSet_state_dict_safe.pth` |

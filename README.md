@@ -14,7 +14,7 @@ and [research interpretation](docs/RESEARCH.md) explain the evidence.
 ## Choose your starting point
 
 | Your purpose | Start here | Next step |
-|---|---|---|
+| --- | --- | --- |
 | Inspect results without installing anything | `python -m src review` | [Notebook 02](notebooks/02_Stage4_Review_and_Stage5_HeldOut_Evaluation.ipynb) and [recorded reports](reports/faculty_evidence/) |
 | Understand how the project works | [Project workflow](#project-workflow) below | [Notebook 01](notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb) walks through data and model stages |
 | Set up the code and contribute | [Quick start](#quick-start) below | [Development guide](docs/DEVELOPMENT.md): modules, tests, common changes |
@@ -96,7 +96,7 @@ flowchart LR
 All commands support `--help`; help stays lightweight and does not load PyTorch.
 
 | Command | What it does | Required resources |
-|---|---|---|
+| --- | --- | --- |
 | `python -m src review` | Reads recorded held-out metrics | Committed reports; standard library only |
 | `python -m src check --unit` | Runs offline synthetic-data/toy-model tests | Installed dependencies |
 | `python -m src check --environment` | Checks imports and optional GPU computation | Installed dependencies |
@@ -160,7 +160,7 @@ checkpoint identity, and local run/evaluation selection must be explicit.
 ## Where to edit next
 
 | Intended change | Start with | Read/check next |
-|---|---|---|
+| --- | --- | --- |
 | Dataset validation or fold audit | [src/metadata.py](src/metadata.py) | Official labels, file keys and source overlap tests |
 | Waveform preprocessing or batches | [src/dataset.py](src/dataset.py) | Synthetic WAV and fold tests |
 | Defaults, class names or asset paths | [src/config.py](src/config.py) | CLI and notebook path-override tests |
@@ -169,7 +169,7 @@ checkpoint identity, and local run/evaluation selection must be explicit.
 | Training loop or checkpoint selection | [src/finetune_train.py](src/finetune_train.py) | Accumulation, gradient and validation-selection tests |
 | Precision or numerical checks | [src/runtime.py](src/runtime.py) | BF16/FP32 and nonfinite-output tests |
 | Evaluation metrics or report outputs | [src/evaluate_selected.py](src/evaluate_selected.py) | Known-probability/confusion-matrix tests |
-| Command arguments | [src/arguments.py](src/arguments.py), [src/__main__.py](src/__main__.py) | CLI help and dispatch tests |
+| Command arguments | [src/arguments.py](src/arguments.py), [CLI entry point](src/__main__.py) | CLI help and dispatch tests |
 | Notebook display or execution controls | [src/notebook_helpers.py](src/notebook_helpers.py) | Default review must remain free of model/data actions |
 | Faculty archive contents | [src/submission.py](src/submission.py) | Tiny synthetic archive and provenance tests |
 

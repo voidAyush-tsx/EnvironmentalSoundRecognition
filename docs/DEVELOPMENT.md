@@ -11,7 +11,7 @@ The main path is:
 selected trainable parameters -> held-out evaluation -> reports`.
 
 | File | Responsibility |
-|---|---|
+| --- | --- |
 | `src/__main__.py`, `src/arguments.py` | One command interface, shared argument parsers and lightweight help |
 | `src/config.py` | Paths, class IDs, model frontend defaults and separate historical experiment identity |
 | `src/environment.py` | Installed-package/GPU checks and explicit dependency snapshots |
@@ -92,7 +92,7 @@ editor/terminal; it does not need another notebook workflow.
 The unified CLI replaces the scattered root scripts and stage runners:
 
 | Earlier entry point | Current command |
-|---|---|
+| --- | --- |
 | `check_dependencies.py` | `python -m src check --environment` |
 | `check_urbansound8k.py` | `python -m src audit-data` |
 | `finalize_requirements.py` | `python -m src snapshot-env --out <path>` |

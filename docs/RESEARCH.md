@@ -16,7 +16,7 @@ The selected `block6` model was chosen using validation macro-F1 before fold-1
 evaluation. Its recorded results are:
 
 | Held-out metric | Value |
-|---|---:|
+| --- | ---: |
 | Accuracy | 88.55% (773 / 873) |
 | Macro precision | 0.9008 |
 | Macro recall | 0.9005 |
@@ -49,7 +49,7 @@ settings. Only the validation-selected `block6` model has a held-out test result
 there are no head-only or `fc1` test scores in the evidence.
 
 | Mode | Trainable layers | Trainable parameters | Best validation accuracy | Best macro-F1 | Selected epoch | Six-epoch time | Peak CUDA allocation |
-|---|---|---:|---:|---:|---:|---:|---:|
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `head` | New classifier | 20,490 | 87.73% | 0.8638 | 4 | 19.80 min | 474.2 MiB |
 | `fc1` | Final dense layer + classifier | 4,216,842 | 88.06% | 0.8668 | 4 | 18.87 min | 522.3 MiB |
 | `block6` | Final convolution block + dense layer + classifier | 60,848,138 | 90.65% | 0.9010 | 4 | 28.65 min | 1,278.1 MiB |
@@ -89,7 +89,7 @@ The implementation preserves the official AudioSet CNN14 and its original
 embedding feeds a separate ten-class linear classifier.
 
 | Item | Implemented behavior / recorded setting |
-|---|---|
+| --- | --- |
 | Input | Mono float32 waveform, 32 kHz, four seconds / 128,000 samples |
 | Preprocessing | Channel mean; `soxr_hq` resampling when needed; deterministic center crop or right zero-padding; no loudness normalization |
 | Features | CNN14 computes spectrogram/log-Mel internally; notebook Mel plots are illustrative |
@@ -121,7 +121,7 @@ The same dataset does not imply the same splits, pretraining, augmentation,
 input representation, training budget or compute regime.
 
 | Original method | Year | Representation and model | Published UrbanSound8K result | Protocol / complexity notes |
-|---|---:|---|---|---|
+| --- | ---: | --- | --- | --- |
 | TSCNN-DS, Su et al. | 2019 | Two CNN streams, combined auditory features, Dempster-Shafer decision fusion | 97.20% accuracy | Paper gives ten measurements, N=10, mean 0.9720 and SD 0.01788; consult its detailed fold protocol. Parameters NR in the primary comparison. |
 | Inception-Dense, Ting et al. | 2021 | 16-kHz log-Mel, lightweight Inception-Dense classifier; training-time mixup/augmentation | 83.03% mean accuracy | Ten predefined folds; 97,214 parameters (Table 5). |
 | RACNN, Fang et al. | 2022 | Log-Mel, resource-adaptive CNN, alpha=0.5 | 97.51% +/- 0.18 | Paper's multi-fold protocol; 145,700 parameters (Table 2). |
@@ -169,7 +169,7 @@ It is separate from ordinary development and does not require rerunning the
 held-out experiment to prepare files.
 
 | Requirement | Evidence to include |
-|---|---|
+| --- | --- |
 | Dataset / distributions / preprocessing | Notebook 01, class/fold/audio figures, official labels and 32-kHz waveform pipeline |
 | Architecture / genuine training | Pinned pretrained CNN14, trainable-layer definitions, three full histories, actual gradient/update checks |
 | Evaluation | Selected fold-1 aggregate/per-class metrics, confusion matrix and probability-based AUC |
