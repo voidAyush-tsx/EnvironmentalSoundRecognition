@@ -15,12 +15,12 @@ and [research interpretation](docs/RESEARCH.md) explain the evidence.
 
 | Your purpose | Start here | Next step |
 | --- | --- | --- |
-| Inspect results without installing anything | `python -m src review` | [Notebook 02](notebooks/02_Stage4_Review_and_Stage5_HeldOut_Evaluation.ipynb) and [recorded reports](reports/faculty_evidence/) |
-| Understand how the project works | [Project workflow](#project-workflow) below | [Notebook 01](notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb) walks through data and model stages |
+| Inspect results without installing anything | `python -m src review` | [Notebook 02](notebooks/02_Model_Evaluation.ipynb) and [recorded reports](reports/faculty_evidence/) |
+| Understand how the project works | [Project workflow](#project-workflow) below | [Notebook 01](notebooks/01_Project_Overview.ipynb) walks through data and model stages |
 | Set up the code and contribute | [Quick start](#quick-start) below | [Development guide](docs/DEVELOPMENT.md): modules, tests, common changes |
 | Work with real audio, weights or training | [Reproducibility guide](docs/REPRODUCIBILITY.md) | Restore assets, check prerequisites, then start an explicit new run |
 | Interpret experiments or compare papers | [Research guide](docs/RESEARCH.md) | Protocol, training settings, ablation, limitations and original references |
-| Prepare the faculty submission | [Faculty instructions](docs/RESEARCH.md#faculty-submission) | [Notebook 03](notebooks/03_CO4_CO5_Faculty_Submission.ipynb) and `python -m src faculty audit` |
+| Prepare the faculty submission | [Faculty instructions](docs/RESEARCH.md#faculty-submission) | [Notebook 03](notebooks/03_Faculty_Submission.ipynb) and `python -m src faculty audit` |
 
 These are the project's four active guides: this README and the three files in
 `docs/`. Experiment JSON/CSV/figures and the dated review under `reports/` are
@@ -180,12 +180,12 @@ changes should produce new experiment evidence; keep existing reports intact.
 
 ## Notebooks and next investigations
 
-- [01 - Data and model workflow](notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb):
+- [01 - Project Overview](notebooks/01_Project_Overview.ipynb):
   preprocessing, folds, model adaptation and explicit local actions. It starts
   with `REVIEW_ONLY=True`.
-- [02 - Experiments and held-out results](notebooks/02_Stage4_Review_and_Stage5_HeldOut_Evaluation.ipynb):
+- [02 - Model Evaluation](notebooks/02_Model_Evaluation.ipynb):
   the three recorded runs, validation selection and saved test evidence.
-- [03 - Research and faculty submission](notebooks/03_CO4_CO5_Faculty_Submission.ipynb):
+- [03 - Faculty Submission](notebooks/03_Faculty_Submission.ipynb):
   interpretation, paper comparisons and optional audit/packaging.
 
 Default notebook review reads reports and figures. Training, inference, README

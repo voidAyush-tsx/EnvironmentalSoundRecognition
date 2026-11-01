@@ -81,7 +81,7 @@ class NotebookHelperTests(unittest.TestCase):
                 read_per_class_metrics(saved)
 
     def test_notebook_local_metadata_and_loaders_receive_the_overridden_root(self):
-        path = PROJECT_ROOT / "notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb"
+        path = PROJECT_ROOT / "notebooks/01_Project_Overview.ipynb"
         notebook = json.loads(path.read_text(encoding="utf-8"))
         cells = {cell["id"]: "".join(cell["source"]) for cell in notebook["cells"]}
         with tempfile.TemporaryDirectory() as tmp:
@@ -103,7 +103,7 @@ class NotebookHelperTests(unittest.TestCase):
             self.assertEqual(reserved_test.mock_calls, [])
 
     def test_notebook_diagnostics_and_pilots_honor_fold_and_precision(self):
-        path = PROJECT_ROOT / "notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb"
+        path = PROJECT_ROOT / "notebooks/01_Project_Overview.ipynb"
         notebook = json.loads(path.read_text(encoding="utf-8"))
         cells = {cell["id"]: "".join(cell["source"]) for cell in notebook["cells"]}
         run = Mock()

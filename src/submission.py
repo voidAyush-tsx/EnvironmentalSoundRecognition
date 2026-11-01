@@ -22,9 +22,9 @@ REQUIREMENT_FILES = (
 STANDARD = [
     'README.md', *REQUIREMENT_FILES,
     'docs/DEVELOPMENT.md', 'docs/REPRODUCIBILITY.md', 'docs/RESEARCH.md',
-    'notebooks/01_UrbanSound8K_PANNs_CNN14_Project.ipynb',
-    'notebooks/02_Stage4_Review_and_Stage5_HeldOut_Evaluation.ipynb',
-    'notebooks/03_CO4_CO5_Faculty_Submission.ipynb',
+    'notebooks/01_Project_Overview.ipynb',
+    'notebooks/02_Model_Evaluation.ipynb',
+    'notebooks/03_Faculty_Submission.ipynb',
     'src/dataset.py', 'src/finetune_train.py', 'src/evaluate_selected.py',
     'reports/faculty_evidence/heldout/evaluation_summary.json',
     'reports/faculty_evidence/heldout/per_class_metrics.csv',
