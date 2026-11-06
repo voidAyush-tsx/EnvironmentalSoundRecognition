@@ -6,7 +6,7 @@
 ## Controlled validation results (not held-out test results)
 
 | Configuration | Best epoch | Validation accuracy | Validation macro-F1 | Trainable parameters | Six-epoch time | Peak CUDA allocated |
-|:--|--:|--:|--:|--:|--:|--:|
+| :-- | --: | --: | --: | --: | --: | --: |
 | Head only | 4 | 87.73% | 0.8638 | 20,490 | 19.80 min | 474.2 MiB |
 | fc1 + head | 4 | 88.06% | 0.8668 | 4,216,842 | 18.87 min | 522.3 MiB |
 | conv_block6 + fc1 + head | **4** | **90.65%** | **0.9010** | **60,848,138** | 28.65 min | 1278.1 MiB |
