@@ -1,0 +1,14 @@
+component,total,trainable,frozen
+spectrogram_extractor,1050624,0,1050624
+logmel_extractor,32832,0,32832
+spec_augmenter,0,0,0
+bn0,128,0,128
+conv_block1,37696,0,37696
+conv_block2,221696,0,221696
+conv_block3,885760,0,885760
+conv_block4,3540992,0,3540992
+conv_block5,14159872,0,14159872
+conv_block6,56631296,56631296,0
+fc1,4196352,4196352,0
+fc_audioset,1079823,0,1079823
+classifier,20490,20490,0

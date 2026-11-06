@@ -1,0 +1,20 @@
+[
+  {
+    "configuration": "head",
+    "epochs": 6,
+    "optimizer_steps_per_epoch": 1743,
+    "applicable_monitored_gradients_nonzero_at_every_step": true
+  },
+  {
+    "configuration": "fc1",
+    "epochs": 6,
+    "optimizer_steps_per_epoch": 1743,
+    "applicable_monitored_gradients_nonzero_at_every_step": true
+  },
+  {
+    "configuration": "block6",
+    "epochs": 6,
+    "optimizer_steps_per_epoch": 1743,
+    "applicable_monitored_gradients_nonzero_at_every_step": true
+  }
+]

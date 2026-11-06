@@ -1,0 +1,329 @@
+% Overleaf-ready, evidence-audited draft. See missing_or_unverified.md before submission.
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,graphicx,booktabs,multirow,array}
+\usepackage{url}
+\usepackage{cite}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{balance}
+\newcommand{\NV}{\textbf{NOT VERIFIED}}
+\newcommand{\NA}{\textbf{NOT AVAILABLE}}
+\newcommand{\missfig}[2]{%
+  \fbox{\begin{minipage}[c][#2][c]{0.94\linewidth}\centering
+  \textbf{MISSING EVIDENCE}\\[4pt]\small #1\\[6pt]
+  \footnotesize No project-specific raw measurements or original figure supplied.
+  \end{minipage}}}
+\newcommand{\myclass}[1]{\texttt{#1}}
+\title{Deep Learning Framework for Environmental Sound Recognition Using PyTorch\\
+\large An Evidence-Gated Study of Selective Fine-Tuning of AudioSet-Pretrained PANNs CNN14}
+\author{\IEEEauthorblockN{[AUTHOR NAME --- NOT SUPPLIED]}
+\IEEEauthorblockA{Department: [DEPARTMENT]\\Institution: [INSTITUTION]\\Location: [CITY, COUNTRY]\\Email: [EMAIL]}}
+\begin{document}
+\maketitle
+\begin{abstract}
+Environmental sound classification must distinguish acoustically overlapping events despite limited annotated recordings, differences in recording conditions, and class imbalance. This manuscript examines the experimental question of whether selective fine-tuning of an AudioSet-pretrained PANNs CNN14 encoder can improve ten-class classification on UrbanSound8K while limiting trainable parameters. UrbanSound8K comprises 8,732 labeled excerpts, each no longer than four seconds, distributed across ten official folds. The proposed analysis contrasts a frozen encoder and adapted classification head with increasingly deep partial fine-tuning, with official folds, checkpoint selection, and class-balanced metrics controlled. The original CNN14 implementation accepts waveforms and computes its spectrogram and log-Mel representation internally; its AudioSet tagging output is not a ten-class single-label classifier. The available evidence, however, does \emph{not} contain the final CNN14 notebook, model checkpoint, training logs, predictions, or ablation records. The only accessible executed notebook belongs to an earlier ESC-50 experiment using different networks, and its measurements are excluded. Accordingly, this paper records an auditable research protocol, primary-source background, dataset reference counts, verification conditions, and methodological limitations, but reports \emph{no invented CNN14 accuracy, macro-F1, trainable-parameter count, or claimed improvement}. Four published UrbanSound8K studies are contextualized, with an explicit warning about unofficial-fold comparisons. The scientific contribution currently supported is a reproducible, evidence-gated analysis specification; a measured contribution cannot be asserted until the completed target-run artifacts are provided.
+\end{abstract}
+\begin{IEEEkeywords}
+environmental sound classification, UrbanSound8K, PANNs CNN14, AudioSet, PyTorch, transfer learning, selective fine-tuning, reproducibility
+\end{IEEEkeywords}
+
+\section{Introduction}\label{sec:introduction}
+An automatic environmental sound recognizer assigns labels such as siren, car horn, drilling, or dog bark to recordings of complex acoustic scenes. In practice, short events can be masked by engines and crowds, sensors and sampling rates vary, and several events share spectral and temporal structure. UrbanSound8K was introduced to support systematic investigation with a defined taxonomy and source-aware folds \cite{salamon2014urbansound,urbansoundreadme}. Its 8,732 excerpts span ten classes but are not uniformly distributed across them.
+
+Large-scale supervised audio pretraining offers a plausible way to address limited target labels. AudioSet provides a substantially broader collection of annotated acoustic events \cite{gemmeke2017audioset}; PANNs investigated convolutional architectures trained for AudioSet tagging and released pretrained checkpoints and implementations \cite{kong2020panns,pannsrepo}. Whether the earlier learned features should remain frozen, or instead be adapted at different depths for urban audio, is an empirical question. Fine-tuning more parameters can increase domain adaptation capacity but also optimize more degrees of freedom on a small downstream dataset. Neither an increase in accuracy nor a reduction in overfitting follows automatically.
+
+This study is organized around three research questions: \emph{RQ1}, how does head-only training compare with selected late-block CNN14 fine-tuning in held-out accuracy and macro-F1? \emph{RQ2}, what is the effect of the unfreezing boundary on training--validation gaps and stability across official folds? \emph{RQ3}, what performance and computational trade-offs arise in terms of trainable parameters and measured training costs? These questions are conditional on recovered run records; none is answered by the current attachments.
+
+The intended contribution is an \emph{empirical layer-selection study}, not a newly invented network, loss, or transfer-learning algorithm. The present artifact contributes a precise audit trail and experimental reporting framework. The incomplete input evidence is a decisive limitation: the paper must not describe the study as executed on CNN14 until its results can be verified. The sections below separate authoritative background, candidate methodology, published comparisons, and unavailable project results.
+
+\section{Prior Work and Reproducibility}\label{sec:related}
+Piczak \cite{piczak2015cnn} evaluated a spectrogram-based convolutional network on several environmental sound datasets and reported 73.7\% mean UrbanSound8K accuracy for its long-segment probability-voting configuration under ten-fold cross-validation. Salamon and Bello \cite{salamon2017augmentation} combined a deeper convolutional classifier with audio deformation and reported approximately 79\% mean accuracy using the dataset's ten-fold protocol, with an internal validation fold for epoch selection. These studies demonstrate that representation design, temporal pooling, and training augmentation influence measured performance.
+
+Su \emph{et al.} \cite{su2019fusion} reported 97.2\% for a two-stream decision-fusion CNN with combined auditory features and described ten-fold evaluation. That value should not be placed on an equal footing with source-aware official-fold results: Guzhov \emph{et al.} \cite{guzhov2020esresnet} investigated reproducibility and found evidence that some earlier, unusually high UrbanSound8K reports were inconsistent with evaluation on the predefined folds. Their ESResNet model reported 84.2\% for mono and 85.4\% for stereo input under the official-split analysis. Thus, \emph{same dataset name} does not imply equivalent evaluation or freedom from source leakage.
+
+PANNs CNN14 differs fundamentally from those CNNs because it is initialized from an AudioSet multilabel audio-tagging task \cite{kong2020panns}. AudioSet-tagging mean average precision is not UrbanSound8K classification accuracy, and the 527-dimensional pretrained tagging head is not interchangeable with a ten-logit softmax classifier. No cited result in this section is a replication by the present project.
+
+\section{Dataset and Evaluation Protocol}\label{sec:data}
+\subsection{UrbanSound8K description}
+The official collection contains 8,732 WAV excerpts, each at most four seconds long, grouped into ten classes and ten predefined folds; source recordings are identified by \myclass{fsID}. Files may differ in original sample rate, bit depth, and channel count \cite{salamon2014urbansound,urbansoundreadme}. The dataset was released for research under a noncommercial Creative Commons license; users must check the applicable redistribution conditions. No target-project metadata CSV, source audio, or audio-header scan was included in the attachments, so project-specific duration statistics, sampling-rate frequencies, and fold totals cannot be reported.
+
+\begin{table}[t]
+\centering\caption{UrbanSound8K class mapping and externally reported class counts (\emph{reference dataset}, not an audit of the target project's local files). Counts are corroborated in published UrbanSound8K dataset tables; total is 8,732.}\label{tab:classes}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}r l r@{}}\toprule
+ID & Official label & Reference clips\\\midrule
+0 & \myclass{air\_conditioner} & 1,000\\
+1 & \myclass{car\_horn} & 429\\
+2 & \myclass{children\_playing} & 1,000\\
+3 & \myclass{dog\_bark} & 1,000\\
+4 & \myclass{drilling} & 1,000\\
+5 & \myclass{engine\_idling} & 1,000\\
+6 & \myclass{gun\_shot} & 374\\
+7 & \myclass{jackhammer} & 1,000\\
+8 & \myclass{siren} & 929\\
+9 & \myclass{street\_music} & 1,000\\\midrule
+ & \textbf{Total} & \textbf{8,732}\\\bottomrule
+\end{tabular}
+\end{table}
+
+Fig.~\ref{fig:classcounts} illustrates \emph{published reference counts} independently of the unavailable project experiment. The shortfall of car-horn and gun-shot clips makes overall accuracy insufficient as the sole metric. Exact local class/fold distributions must be recomputed from the project's own \myclass{UrbanSound8K.csv} before this draft is represented as a final experimental report.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/urbansound8k_reference_class_counts.pdf}
+\caption{UrbanSound8K per-class clip totals from external published reference data; no project-specific dataset scan was available. Figure generated from \myclass{tables/published\_class\_counts.csv}, with source attribution and method in the accompanying provenance log.}\label{fig:classcounts}
+\end{figure}
+
+\subsection{Fold assignment, selection, and leakage}
+The intended protocol should reserve each official test fold without random cross-fold splitting, using disjoint folds for training and internal validation. For a ten-fold assessment, a separate model and selection process must be executed for each test fold; if only one test fold was run, its result must be labeled as a \emph{single-fold estimate}. Predefined folds reduce the risk of overlapping source excerpts crossing training and testing. All data transformations fitted from data, including statistics for normalization or learned calibrators, must use training data only.
+
+\begin{table}[t]
+\centering\caption{Target-project partition and dataset diagnostics. Counts are unavailable because the final UrbanSound8K metadata/run files were not supplied.}\label{tab:protocol}
+\footnotesize
+\begin{tabular}{@{}p{.38\columnwidth}p{.52\columnwidth}@{}}\toprule
+Required evidence & Audited project value\\\midrule
+Experiment test folds & \NV\\
+Training/validation fold identities & \NV\\
+Train/validation/test sample counts & \NA\\
+Source-ID overlap check & \NA\\
+Median/minimum clip duration & \NA\\
+Sampling-rate distribution & \NA\\
+Test-checkpoint selection rule & \NV\\\bottomrule
+\end{tabular}
+\end{table}
+
+An important distinction is \emph{which fold was used when}: treating a fold as validation while comparing interventions, and then calling that same fold untouched independent test data, introduces selection bias. Consequently, all final comparisons should supply split-manifest hashes and checkpoint provenance, with no test-driven adjustment to the candidate set.
+
+\section{Audio Representation and Model Adaptation}\label{sec:architecture}
+\subsection{Official CNN14 computation path}
+The published PANNs architecture provides a waveform-input \myclass{Cnn14} model. Its official implementation contains a differentiable spectrogram extractor, log-Mel filter bank, \myclass{bn0}, six two-convolution blocks \myclass{conv\_block1}--\myclass{conv\_block6} with channel widths 64, 128, 256, 512, 1024, and 2048, temporal and frequency pooling, a 2048-unit fully connected layer \myclass{fc1}, and an AudioSet tagging layer \myclass{fc\_audioset} \cite{pannsrepo}. The output dictionary contains \myclass{clipwise\_output} (multilabel sigmoid scores) and \myclass{embedding} (a 2048-dimensional representation).
+
+The official repository's reference 32-kHz Cnn14 configuration specifies a 1024-sample analysis window, a 320-sample hop, 64 Mel bins, 50-Hz minimum Mel frequency, and 14-kHz maximum frequency. A separate 16-kHz CNN14 variant and checkpoint use different numerical settings \cite{pannsrepo}. These are \emph{repository configurations}, not verified hyperparameters of the missing final project. Matching checkpoint family, input waveform sample rate, and model constructor is mandatory. Computing an external Mel spectrogram and passing it into this raw-waveform interface would be incorrect without explicit architectural changes.
+
+\begin{table}[t]
+\centering\caption{Source-verified CNN14 reference parameters versus target-project verification status.}\label{tab:audio}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{.39\columnwidth}p{.31\columnwidth}p{.19\columnwidth}@{}}\toprule
+Item & Official 32-kHz example & Target project\\\midrule
+Input & waveform $[B,T]$ & \NV\\
+Resample target & 32,000 Hz & \NV\\
+STFT window/hop & 1024 / 320 & \NV\\
+Mel bins, range & 64, 50--14k Hz & \NV\\
+Length/segmentation & user-defined & \NV\\
+Channel conversion & user-defined & \NV\\
+Normalization & implementation dependent & \NV\\
+Train augmentation & optional SpecAugment & \NV\\
+Eval augmentation & disabled in eval & \NV\\\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Transfer from multilabel tagging to single-label prediction}
+Let $\mathcal D=\{(x_i,y_i)\}_{i=1}^N$ with $y_i\in\{0,\ldots,9\}$. Denote the pretrained representation by $f_{\theta}$ and a ten-class classification head by $g_{\phi}$. The intended downstream logits and probabilities are
+\begin{align}
+\mathbf z_i &=g_{\phi}(f_{\theta}(x_i))\in\mathbb R^{10},\label{eq:logits}\\
+p_{ic}&=\frac{\exp(z_{ic})}{\sum_{k=0}^{9}\exp(z_{ik})},\label{eq:softmax}\\
+\mathcal L_{\mathrm{CE}} &=-\frac1N\sum_{i=1}^{N}\log p_{i,y_i}.\label{eq:ce}
+\end{align}
+This is the standard single-label softmax cross-entropy objective proposed for verification, rather than evidence that the final project used it. The original AudioSet output has 527 sigmoid tagging scores and a different task objective; applying cross-entropy to those 527 sigmoid probabilities would not implement the stated ten-class classifier.
+
+The official \myclass{embedding} interface enables a separate linear or multilayer head, but its implementation includes dropout, so the choice of representation and train/eval behavior matters. Alternatively, a validated wrapper may expose an earlier 2048-dimensional feature from the official forward path. Such changes must be documented, tested for pretrained-key compatibility, and reported as adaptations rather than silently called the untouched official architecture. Model output must be $[B,10]$ before any softmax is applied for reporting.
+
+\begin{figure*}[t]
+\centering
+\resizebox{\textwidth}{!}{\begin{tikzpicture}[>=Latex, node distance=7mm and 8mm, every node/.style={font=\footnotesize}, box/.style={draw,rounded corners,align=center,minimum height=9mm,minimum width=27mm,fill=black!4}, stream/.style={-Latex,thick}]
+\node[box] (audio) {UrbanSound8K\\waveforms};
+\node[box,right=of audio] (input) {Channel/length\\preprocessing\\\textbf{not verified}};
+\node[box,right=of input] (mel) {CNN14 internal\\STFT $\rightarrow$ log-Mel};
+\node[box,right=of mel] (conv) {CNN14 conv blocks\\1--6 + pooling};
+\node[box,right=of conv] (embed) {2048-D\\embedding};
+\node[box,right=of embed] (head) {Adapted\\10-logit head};
+\node[box,right=of head] (prob) {Softmax /\\argmax};
+\draw[stream] (audio)--(input);\draw[stream] (input)--(mel);\draw[stream] (mel)--(conv);\draw[stream] (conv)--(embed);\draw[stream] (embed)--(head);\draw[stream] (head)--(prob);
+\draw[dashed,rounded corners] ($(mel.north west)+(-.1,.25)$) rectangle ($(embed.south east)+(.1,-.25)$);
+\node[font=\scriptsize,above=4mm of conv] {Official PANNs feature path (source verified)};
+\node[font=\scriptsize,below=4mm of head,align=center] {Downstream attachment\\not available for audit};
+\end{tikzpicture}}
+\caption{Architecture-aware proposed processing path. The waveform and internal CNN14 feature transformations are verified in the official source. The project's actual preprocessing, head implementation, parameter freezing, checkpoint and experiments are \textbf{not verified}; arrows illustrate the intended task, not an executed trace.}\label{fig:pipeline}
+\end{figure*}
+
+\subsection{Frozen versus trainable parameters}
+A genuine selective fine-tuning setup partitions $\theta=(\theta_F,\theta_T)$ into frozen and trainable components. Optimizer steps should affect $\theta_T$ and $\phi$ only:
+\begin{equation}
+\min_{\theta_T,\phi}\ \mathcal L_{\mathrm{CE}}\bigl(g_\phi(f_{\theta_F,\theta_T}(x)),y\bigr), \quad \nabla_{\theta_F}\mathcal L=0.
+\label{eq:partition}
+\end{equation}
+The notation does \emph{not} establish the identity of $\theta_T$ in any completed run. Batch-normalization running means and variances are buffers, not optimizer parameters; frozen blocks should be kept in evaluation mode as appropriate, including after a call to \myclass{train()}. A credible verification trace must show the actual \myclass{requires\_grad} mask, optimizer parameter identities, absence of frozen-block gradients and updates, and the presence of intended later-block updates.
+
+\begin{table}[t]
+\centering\caption{CNN14 freezing audit: official block names are known; the actual final-project frozen/trainable policy and parameter counts are not.}\label{tab:freezing}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{.49\columnwidth}p{.23\columnwidth}p{.19\columnwidth}@{}}\toprule
+Component & Run status & Params\\\midrule
+\myclass{bn0}, internal front end & \NV & \NA\\
+\myclass{conv\_block1}, \myclass{conv\_block2} & \NV & \NA\\
+\myclass{conv\_block3}, \myclass{conv\_block4} & \NV & \NA\\
+\myclass{conv\_block5}, \myclass{conv\_block6} & \NV & \NA\\
+\myclass{fc1} / embedding path & \NV & \NA\\
+\myclass{fc\_audioset} (527 labels) & \NV & \NA\\
+Adapted ten-class head & \NV & \NA\\\midrule
+Model total / frozen / trainable & \NV & \NA\\\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Proposed Controlled Study}\label{sec:design}
+\subsection{Research hypothesis and comparison units}
+The variable of scientific interest is \emph{how deep into CNN14 the trainable region begins}. A useful controlled set would include head-only extraction, late-block partial tuning, deeper partial tuning, and, if computationally feasible, full fine-tuning. The combinations in Table~\ref{tab:design} are candidate definitions, not evidence that a single one was run. A valid ablation must keep the held-out folds, augmentations, training budget, optimizer policy, checkpoint selection and evaluation code fixed, or identify each difference as a confounder.
+
+\begin{table}[t]
+\centering\caption{Candidate experiment matrix. Candidate interventions are not confirmed as executed; all checkpoint records remain unavailable.}\label{tab:design}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{.10\columnwidth}p{.48\columnwidth}p{.33\columnwidth}@{}}\toprule
+ID & Intended trainable region & Run evidence\\\midrule
+H & Ten-class head only & \NA\\
+P6 & Block 6 + head & \NA\\
+P5--6 & Blocks 5--6 + head & \NA\\
+P4--6 & Blocks 4--6 + head & \NA\\
+F & All selected CNN14 layers + head & \NA\\\bottomrule
+\end{tabular}
+\end{table}
+
+A head-only control measures the usefulness of a fixed pretrained representation. A progressive unfreezing series isolates the boundary when all other choices remain constant. A full-tuning reference can help characterize the cost of adaptation, but if it differs in batch size or number of optimizer steps, it is not a clean single-variable ablation. The same applies to changing dropout, waveform augmentation, or pooling simultaneously with freezing depth.
+
+\subsection{Selection and reproducibility safeguards}
+For every test fold, all interventions should select their own checkpoint on an internal validation fold using a \emph{predeclared metric}, preferably macro-F1. After selection, test metrics must be computed once per model/checkpoint without choosing a winner based on test outcomes. At each run, archive the dataset manifest, code commit, seed, training history, saved checkpoint identifier, dependency versions and CPU/GPU metadata. A pooled prediction file should carry \myclass{filename}, \myclass{fsID}, class ID, true label, predicted label, ten probabilities, fold, and experiment ID.
+
+\begin{table}[t]
+\centering\caption{Training configuration of the final UrbanSound8K/CNN14 project, contrasted with research protocol requirements.}\label{tab:hyper}
+\footnotesize
+\begin{tabular}{@{}p{.48\columnwidth}p{.43\columnwidth}@{}}\toprule
+Hyperparameter / artifact & Target run\\\midrule
+Optimizer and group-specific learning rates & \NV\\
+Batch size / weight decay / scheduler & \NV\\
+Loss actually used & \NV\\
+Epochs completed / stopping rule & \NV\\
+Selection metric / chosen epoch & \NV\\
+Seeds / deterministic flags & \NV\\
+Augmentation and evaluation policy & \NV\\
+GPU / memory / training duration & \NA\\
+PyTorch / torchaudio / packages & \NV\\
+Checkpoint file / SHA-256 / commit & \NA\\
+Mixed precision / clipping & \NV\\\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Measures and Statistical Accounting}\label{sec:metrics}
+Let $C\in\mathbb N_0^{10\times10}$ denote the confusion matrix with true classes in rows and predicted classes in columns. Overall accuracy is
+\begin{equation}
+\mathrm{Acc}=\frac{\sum_{c=0}^{9} C_{cc}}{\sum_{i=0}^{9}\sum_{j=0}^{9} C_{ij}}.
+\end{equation}
+For class $c$, let $\mathrm{TP}_c=C_{cc}$, $\mathrm{FN}_c=\sum_j C_{cj}-C_{cc}$ and $\mathrm{FP}_c=\sum_i C_{ic}-C_{cc}$. Then
+\begin{align}
+P_c&=\frac{\mathrm{TP}_c}{\mathrm{TP}_c+\mathrm{FP}_c},&
+R_c&=\frac{\mathrm{TP}_c}{\mathrm{TP}_c+\mathrm{FN}_c},\\
+F_{1,c}&=\frac{2P_cR_c}{P_c+R_c},&
+F_{1,\mathrm{macro}}&=\frac1{10}\sum_{c=0}^{9}F_{1,c}.
+\end{align}
+Macro precision and recall likewise average class scores uniformly. Support-weighted F1 uses $n_c/\sum_j n_j$, where $n_c=\sum_j C_{cj}$; in ten-class single-label classification, micro-precision, micro-recall and micro-F1 coincide with accuracy when all classes are included. A zero denominator requires an explicitly declared convention, e.g. zero-division set to zero, and absent true classes must be identified. Per-class specificity, if computed, is $\mathrm{TN}_c/(\mathrm{TN}_c+\mathrm{FP}_c)$ under a one-versus-rest interpretation; a multiclass aggregate must state its averaging rule.
+
+One-versus-rest ROC-AUC must rank samples by a continuous score such as $p_{ic}$, not the argmax class ID. When a validation/test fold has no positives or no negatives for a class, its class ROC-AUC is undefined rather than zero. Because no CNN14 probabilities, confusion counts or selected-checkpoint outputs were supplied, \emph{none of these metrics is reported as measured}.
+
+If $K$ independent held-out fold evaluations are available, the arithmetic mean $\bar a=K^{-1}\sum_k a_k$ and sample standard deviation $s_a=[\sum_k(a_k-\bar a)^2/(K-1)]^{1/2}$ describe fold variation, not the theoretical bias--variance decomposition. When pooling predictions, pooled accuracy weights folds by their test sample sizes, so it need not equal the unweighted fold mean. Foldwise paired differences can support tentative controlled comparisons; post-hoc fold or model selection and a small $K$ limit inferential strength.
+
+\section{Audit of Target-Project Results}\label{sec:results}
+\subsection{Scope of the accessible executed evidence}
+The accessible executed notebook is named \myclass{environmental\_sound\_recognition.ipynb}; inspection of its cell sources and outputs establishes that it uses the \emph{ESC-50} dataset, 50 output classes, and models named \myclass{SimpleCNN} and \myclass{ProposedCNN}. It does \emph{not} contain the claimed final UrbanSound8K/CNN14 training evidence. A separate narrative file describes a prior PANNs verification runner and missing local official-source files, but the runner, its verification output, checkpoint, and the final experiment repository were not attached. Neither a past conversation summary nor a script that might execute constitutes proof of completed fine-tuning.
+
+\begin{table}[t]
+\centering\caption{Target UrbanSound8K/CNN14 headline result audit. Blank measurements are deliberate; no ESC-50 results have been reused.}\label{tab:results}
+\footnotesize
+\begin{tabular}{@{}p{.60\columnwidth}l@{}}\toprule
+Result (selected checkpoint, specified split) & Value\\\midrule
+Test fold(s) / number of runs & \NV\\
+Test accuracy & \NA\\
+Macro precision / recall / F1 & \NA\\
+Weighted F1 / specificity / ROC-AUC & \NA\\
+Best-validation epoch / criterion & \NA\\
+Total / trainable parameters & \NA\\
+Train--validation accuracy gap & \NA\\
+Mean/stdev across test folds & \NA\\
+Train time / peak memory & \NA\\\bottomrule
+\end{tabular}
+\end{table}
+
+Neither results from the previous 50-class task nor hypothetical training curves can answer the research questions. Accordingly, Table~\ref{tab:results} contains only evidence status. The full target-run result ledger is included in the supplementary material and in \myclass{evidence\_inventory.csv}.
+
+\subsection{Figures awaiting original measurements}
+\begin{figure}[t]
+\centering\missfig{CNN14 training/validation loss and accuracy by epoch, identified by fold, experiment and checkpoint.}{33mm}
+\caption{\textbf{MISSING EVIDENCE:} CNN14 training and validation curves. They must be derived from recorded epoch-level histories, not simulated.}\label{fig:curves}
+\end{figure}
+
+\begin{figure}[t]
+\centering\missfig{Integer $10\times10$ held-out confusion counts in official class-ID order; preferably normalized companion plot.}{33mm}
+\caption{\textbf{MISSING EVIDENCE:} selected CNN14 checkpoint confusion matrix. No classwise error claims are possible without these counts.}\label{fig:confusion}
+\end{figure}
+
+Fig.~\ref{fig:curves} and Fig.~\ref{fig:confusion} remain deliberately empty because the required project-specific records are unavailable. No result table can legitimately provide fold maxima, test recalls, or error pairs at present.
+
+\section{Ablation and Efficiency Assessment}\label{sec:ablation}
+The proposed innovation is scientifically testable only with at least one valid CNN14 comparison under matched folds and training conditions. The causal contrast between two freeze boundaries $A$ and $B$, for the same test fold, is $\Delta_{A,B}=100(a_A-a_B)$ \emph{percentage points}. By contrast, relative change in accuracy is $(a_A-a_B)/a_B$, which is undefined when $a_B=0$. Trainable-parameter reduction is $100(1-p_A/p_B)\%$ relative to a clearly identified comparator. These are definitions, not measured effects.
+
+\begin{table}[t]
+\centering\caption{Mandatory controlled comparison ledger for CNN14 variants; configurations are candidate interventions only.}\label{tab:ablations}
+\footnotesize\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}l c c c c@{}}\toprule
+Variant & Test Acc. & Macro-F1 & Params train. & Time\\\midrule
+H (head-only) & --- & --- & --- & ---\\
+P6 (block 6) & --- & --- & --- & ---\\
+P5--6 & --- & --- & --- & ---\\
+P4--6 & --- & --- & --- & ---\\
+F (full) & --- & --- & --- & ---\\\bottomrule
+\end{tabular}
+\\[-1pt]\parbox{.95\columnwidth}{\scriptsize --- = \textbf{NOT AVAILABLE}. No row is asserted to have run. Accuracy and F1 units would be \%; time requires a specified device and accounting convention.}
+\end{table}
+
+A smaller training--test gap is not proof of higher predictive accuracy: an underfit model can show a small gap because it performs poorly on both sets. Likewise, a parameter count without a corresponding wall-clock or memory measurement does not demonstrate speed or energy efficiency. No available attachment establishes a positive, negative, or neutral CNN14 ablation outcome, so the intervention's benefit and failure modes remain unknown.
+
+\section{Published UrbanSound8K Comparison}\label{sec:published}
+Table~\ref{tab:published} presents independently reported values, not project replications. Piczak and Salamon--Bello use the ten predefined folds in their experimental descriptions \cite{piczak2015cnn,salamon2017augmentation}. ESResNet differentiates official and unofficial protocols explicitly \cite{guzhov2020esresnet}. Su \emph{et al.} describe ten-fold evaluation, but subsequent authors questioned whether the published high result was compatible with source-aware official folds \cite{su2019fusion,guzhov2020esresnet}; it is retained as a \emph{contested comparison}, not a performance target or a fair ranking entry.
+
+\begin{table*}[t]
+\centering\caption{Primary-source UrbanSound8K results (\emph{published}, not obtained in this project). A single accuracy column is \textbf{not} a fair ranking across different input, pretraining and split protocols. ``Reported'' means the cited authors' own figure, not independently reproduced here.}\label{tab:published}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{.17\textwidth}p{.18\textwidth}p{.16\textwidth}p{.20\textwidth}p{.10\textwidth}p{.11\textwidth}@{}}\toprule
+Method, year & Architecture / representation & Outside pretraining & UrbanSound8K evaluation context & Reported accuracy & Source / complexity\\\midrule
+Piczak, 2015 & Spectrogram + delta CNN; long-segment vote & None stated & Ten-fold; internal validation & 73.7\% & \cite{piczak2015cnn}; params n/r\\
+Salamon--Bello, 2017 (no aug.) & SB-CNN, log-Mel patches & None & Ten predefined folds; internal validation & $\sim$73\% & \cite{salamon2017augmentation}; n/r\\
+Salamon--Bello, 2017 (+aug.) & Same SB-CNN + audio deformations & None; augmentation & Same ten-fold study as above & $\sim$79\% & \cite{salamon2017augmentation}; n/r\\
+ESResNet, 2020 & STFT/ResNet, mono & Visual-domain pretraining investigated & Official-fold analysis & 84.2\% & \cite{guzhov2020esresnet}; n/r\\
+ESResNet, 2020 & STFT/ResNet, stereo & Visual-domain pretraining investigated & Official-fold analysis; stereo subset policy per paper & 85.4\% & \cite{guzhov2020esresnet}; n/r\\
+TSCNN-DS, 2019 & Multi-feature two-stream fusion CNN & None established & Authors say ten folds; subsequent reproducibility challenge & 97.2\%$^\dagger$ & \cite{su2019fusion,guzhov2020esresnet}; n/r\\\midrule
+\textbf{Target CNN14 project} & \textbf{AudioSet-PANNs + 10-class head (unverified)} & \textbf{AudioSet intended} & \textbf{No final split/run evidence} & \textbf{NOT AVAILABLE} & \textbf{No own result}\\\bottomrule
+\end{tabular}
+\vspace{1mm}\parbox{.96\textwidth}{\scriptsize n/r = parameter counts or compute not recovered from the cited comparison text. $^\dagger$ The 97.2\% is a \emph{reported} result flagged as not reliably comparable on official folds by \cite{guzhov2020esresnet}. Salamon--Bello figures are rounded as stated in the body of the original paper.}
+\end{table*}
+
+Comparison is further confounded by mono versus stereo inputs, augmentation and preprocessing choices, ImageNet versus AudioSet or no pretraining, output pooling, and model-selection protocols. It would be invalid to subtract an unavailable CNN14 accuracy from any published number or to call the largest number a current state of the art.
+
+\section{Discussion and Threats to Validity}\label{sec:discussion}
+The central question concerns the representational specialization of high-level CNN14 blocks. One plausible hypothesis is that later CNN14 layers capture events specific to AudioSet's larger ontology and need adaptation for UrbanSound8K; another is that changing them on a modest dataset may overfit source signatures or class-specific recording artifacts. The hypotheses are mutually compatible, and only controlled target-task measurements can distinguish their effects. The same caution applies to regularization, which can shrink a training gap without improving performance.
+
+Three sources of uncertainty dominate. First, \emph{artifact provenance}: no target CNN14 source revision, loaded checkpoint, model weight hashes, parameter masks, or selected model are available. Second, \emph{evaluation validity}: the implemented split/fold rules and any prior use of a candidate test fold are unverified; random splitting may leak excerpts from shared Freesound recordings. Third, \emph{statistical power}: without fold-level results and seeds, variation across sources or random initialization cannot be estimated. The official repository includes different Cnn14 checkpoint variants, so referring generically to ``CNN14 pretrained'' is insufficient for precise reproduction.
+
+There are also external validity limits even for a future correct experiment. Short clips from UrbanSound8K cannot establish robustness to field devices, new urban neighborhoods, long continuous recordings, or multiple simultaneous positive classes. A fixed ten-class classifier may be overconfident on sounds outside its taxonomy; a reported softmax probability is not necessarily calibrated confidence. Ablations selected after observing test outcomes require fresh held-out evidence before generalization claims.
+
+\section{Conclusion and Future Work}\label{sec:conclusion}
+The research objective is to determine whether the amount and location of CNN14 adaptation change ten-class urban sound recognition accuracy, class-balanced F1, and training efficiency. The accessible evidence verifies the published dataset, the original CNN14 architecture and pretraining interface, and the need for official-fold comparisons. It \emph{does not} verify that any CNN14 transfer-learning experiment, ten-fold evaluation, or controlled freezing-depth ablation was completed. Consequently, RQ1--RQ3 remain unanswered and no quantitative project contribution can responsibly be claimed.
+
+To complete the empirical manuscript, the final executed CNN14 notebooks and repository should be reconciled with checkpoint manifests, gradient/freezing diagnostics, fold manifests, histories, class probabilities, and model-specific ablations. A revised paper can then replace the marked placeholders with checkpoint-linked measurements, including negative results and fold-to-fold uncertainty. Until that evidence arrives, this is a reproducible, source-verified \emph{research-paper draft}, not a finished empirical validation.
+
+\appendices
+\input{supplementary}
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\end{document}

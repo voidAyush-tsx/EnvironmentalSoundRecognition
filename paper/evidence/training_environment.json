@@ -1,0 +1,23 @@
+{
+  "python": "3.13.15",
+  "executable": "c:\\Program Files\\Python313\\python.exe",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "cuda_available": true,
+  "torch_cuda_build": "12.8",
+  "gpu_name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "gpu_total_gib": 4.0,
+  "versions": {
+    "torch": "2.7.0+cu128",
+    "torchlibrosa": "0.1.0",
+    "numpy": "2.4.2",
+    "scipy": "1.15.3",
+    "librosa": "0.11.0",
+    "soundfile": "0.13.1",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.7.2",
+    "matplotlib": "3.11.2",
+    "seaborn": "0.13.2",
+    "tqdm": "4.67.1",
+    "ipykernel": "7.2.0"
+  }
+}

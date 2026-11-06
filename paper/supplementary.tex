@@ -1,0 +1,67 @@
+\section{Evidence and Reproduction Notes}\label{app:evidence}
+The manuscript audit reads preserved experiment records without retraining or re-evaluating the test audio. The companion \code{audit\_and\_figures.py} recomputes metrics from per-clip predictions, checks labels against metadata, verifies confusion counts, reconstructs the parameter masks, loads the selected checkpoint, and regenerates numerical tables and figures. It also scans local WAV headers. The earlier full-decoding report remains historical evidence rather than a newly repeated decoding test.
+
+The selected training directory is
+\begin{quote}\footnotesize
+\nolinkurl{results/stage4/20261027_144004_603447_block6_test1}
+\end{quote}
+and the evaluation directory is
+\begin{quote}\footnotesize
+\nolinkurl{results/stage5/20261030_132140_664348_block6_test1}.
+\end{quote}
+The selected checkpoint SHA-256 is
+\begin{quote}\footnotesize\ttfamily
+7c0e01a0078c225a18f4dc5eaa5110d051\\
+ef2c8effec7bcebb4e856e6659328c.
+\end{quote}
+The line break is for typesetting; the hash is one uninterrupted 64-character value without the final punctuation. The original pretrained file has MD5
+\begin{quote}\footnotesize\ttfamily
+595633ac2d1cac7ef04ebf70e2fee4e4.
+\end{quote}
+That MD5 agrees with the official weight release \cite{pannsweights}. The selected checkpoint stores only trainable parameter tensors, not a complete standalone model. Reproduction requires the pinned upstream code and original frozen backbone as well as the selected tensors.
+
+The audit manifest records SHA-256 hashes for the local evidence used in the revision. The audited project revision is
+\begin{quote}\footnotesize
+\nolinkurl{d5b10c62d086c42ec1f62a70833a0e7916d67b79}.
+\end{quote}
+This is the revision inspected for the manuscript, not an asserted training-time revision. Saved environment metadata reports \code{torchlibrosa} 0.1.0, \code{librosa} 0.11.0, \code{soundfile} 0.13.1, and scikit-learn 1.7.2. The repository's dependency snapshot is a record of direct package versions rather than a complete transitive lock.
+
+\section{Local Audio Sampling Rates}
+Table~\ref{tab:sampling} retains the exact header rates, including 11,024~Hz as distinct from 11,025~Hz. No rate has been rounded into another category. These counts concern original files before conversion to the model's 32-kHz input.
+\begin{table}[h]
+\centering\caption{Sample rates in all 8,732 local WAV headers.}\label{tab:sampling}
+\footnotesize
+\begin{tabular}{@{}r r@{}}\toprule
+Original sample rate (Hz) & Files\\\midrule
+\SampleRateRows
+\midrule Total & 8,732\\\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Selected-Model Parameter Audit}
+Table~\ref{tab:parameters} counts registered parameter elements in the reconstructed \code{block6} configuration. BatchNorm running-statistic buffers are not parameters and are excluded from these counts. The spectrogram and log-Mel kernel tensors are registered as frozen parameters in the installed front-end implementation; including them explains part of the difference from a count of learned CNN weights alone.
+\begin{table}[h]
+\centering\caption{Exact component counts for \code{block6}. F = frozen, T = trainable.}\label{tab:parameters}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}l r c@{}}\toprule
+Component & Parameters & Status\\\midrule
+Spectrogram extractor & 1,050,624 & F\\
+Log-Mel extractor & 32,832 & F\\
+\code{bn0} & 128 & F\\
+\code{conv\_block1} & 37,696 & F\\
+\code{conv\_block2} & 221,696 & F\\
+\code{conv\_block3} & 885,760 & F\\
+\code{conv\_block4} & 3,540,992 & F\\
+\code{conv\_block5} & 14,159,872 & F\\
+\code{conv\_block6} & 56,631,296 & T\\
+\code{fc1} & 4,196,352 & T\\
+\code{fc\_audioset} & 1,079,823 & F\\
+Ten-class classifier & 20,490 & T\\\midrule
+Total & 81,857,561 & \\
+Trainable & 60,848,138 & \\
+Frozen & 21,009,423 & \\\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Measurements Not Available}
+No completed ten-fold evaluation, repeated-seed study, test evaluation of \code{head}/\code{fc1}, or full-fine-tuning comparison is present in the final experiment record. Inference latency, energy use, calibration assessment, and out-of-distribution testing are also unavailable. These omissions prevent claims of statistically established improvements, benchmark-wide robustness, or deployment efficiency. They are not represented by fabricated estimates or by substituting results from another dataset.

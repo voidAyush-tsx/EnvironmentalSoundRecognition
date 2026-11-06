@@ -1,0 +1,77 @@
+{
+  "audit_date": "2026-11-06",
+  "method": "Recomputed saved predictions; fresh WAV headers, checkpoint hashes and strict reconstruction. No new training or inference.",
+  "root_commit": "d5b10c62d086c42ec1f62a70833a0e7916d67b79",
+  "metadata_rows": 8732,
+  "train_samples": 6971,
+  "validation_samples": 888,
+  "test_samples": 873,
+  "correct_predictions": 773,
+  "metrics": {
+    "accuracy": 0.8854524627720504,
+    "macro_precision": 0.9007672759113218,
+    "macro_recall": 0.9004583333333332,
+    "macro_f1": 0.8964429016049928,
+    "weighted_precision": 0.8914454174806298,
+    "weighted_recall": 0.8854524627720504,
+    "weighted_f1": 0.8837795650597684,
+    "macro_specificity_ovr": 0.9870176852629451,
+    "macro_roc_auc_ovr": 0.9909250940757282
+  },
+  "probability_sum_max_error": 1.8508108468040518e-07,
+  "cross_fold_sources": [
+    {
+      "fsID": 77751,
+      "folds": "2,7",
+      "clips": 30,
+      "overlapping_interval_pairs": 31
+    },
+    {
+      "fsID": 106905,
+      "folds": "1,8",
+      "clips": 7,
+      "overlapping_interval_pairs": 0
+    },
+    {
+      "fsID": 132016,
+      "folds": "1,4",
+      "clips": 15,
+      "overlapping_interval_pairs": 0
+    },
+    {
+      "fsID": 176638,
+      "folds": "1,4",
+      "clips": 5,
+      "overlapping_interval_pairs": 1
+    },
+    {
+      "fsID": 180937,
+      "folds": "1,9",
+      "clips": 95,
+      "overlapping_interval_pairs": 57
+    }
+  ],
+  "train_test_shared_ids": [
+    106905,
+    132016,
+    176638,
+    180937
+  ],
+  "test_clips_sharing_source_with_training": 91,
+  "duration_seconds": {
+    "min": 0.05,
+    "median": 4.0,
+    "mean": 3.6075218292463376,
+    "max": 4.036647314949202
+  },
+  "clips_over_four_seconds": 8,
+  "selected_checkpoint_sha256": "7c0e01a0078c225a18f4dc5eaa5110d051ef2c8effec7bcebb4e856e6659328c",
+  "original_checkpoint_md5": "595633ac2d1cac7ef04ebf70e2fee4e4",
+  "safe_backbone_sha256": "73a1ac4a2784f37f6c3e453a60498f9f32198ce57fd56466e934872fb230bd4f",
+  "not_reverified": [
+    "Historical training execution/timings",
+    "Historical full audio decoding",
+    "Prediction generation by fresh inference",
+    "Exact project revision at training time"
+  ]
+}
